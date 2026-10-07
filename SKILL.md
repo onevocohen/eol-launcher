@@ -41,36 +41,42 @@ Fields Asana **never** fills: `date`, `key_dates`, `rationale`, `open_opportunit
 
 ## Workflow
 
-### Step 0 — Pull from Asana automatically (always do this first)
+The PM only needs to say: *"I want to work on an EOL"* or *"I have a product I want to deprecate."*
+From there, everything is automated. The full flow:
 
-As soon as you know the product or EOL name, search Asana automatically — no URL needed:
+```
+PM mentions EOL → search Asana → found? use it : ask questions → save to Asana (if new) → create deck → share both links
+```
+
+---
+
+### Step 0 — Get the product name, then search Asana
+
+Ask the PM: **"What is the product or feature name?"**
+
+Then immediately search Asana:
 
 ```bash
 python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/fetch_asana.py" "<product name>"
 ```
 
-**Exit code behaviour:**
-
 | Exit code | Meaning | What to do |
 |---|---|---|
-| `0` | Single match found — JSON output ready | Use the output, proceed to Step 1 |
-| `2` | No match found | Skip Asana, go straight to Step 1 |
-| `3` | Multiple matches — `_asana_multiple_matches` list in output | Ask PM: *"I found a few EOL submissions for that name — which one?"* then re-run with the chosen GID |
+| `0` | Existing task found — partial JSON ready | Pre-fill fields from it, go to Step 1 for gaps |
+| `2` | No task found | Ask PM all missing questions, then go to Step 1 |
+| `3` | Multiple matches — `_asana_multiple_matches` in output | Ask PM: *"I found a few submissions for that name — which one?"* Re-run with chosen GID |
 
-**Read these `_asana_*` metadata fields to ask smarter follow-ups:**
-
-- `_asana_alternative_flag`: `"full"` → ask for the product name; `"partial"` → ask what's missing; `"none"` → flag this gap to the PM
-- `_asana_has_skus`: `"Yes"` → ask for the specific SKU codes; `"No"` → set `impacted_skus: []`
-- `_asana_full_description`: mine this for rationale, customer impact, and existing-customer guidance
-- `_asana_due_on`: use as a key date anchor if present
-- `_asana_submitter` / `contact`: pre-fill the contact field
-
-If the PM provides an Asana URL or task GID directly, pass that instead of the product name — the script handles both.
+**`_asana_*` hints for smarter follow-ups:**
+- `_asana_alternative_flag`: `"full"` → ask for product name; `"partial"` → ask what's missing; `"none"` → flag gap
+- `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []`
+- `_asana_full_description`: mine for rationale, customer impact, existing-customer guidance
+- `_asana_due_on`: anchor for key dates
+- `_asana_submitter` / `contact`: pre-fill contact field
 
 ### Step 1 — Collect remaining context
 
-After Step 0, check which of the 16 fields are still empty. Ask the PM for any additional
-docs (PRD, spec, etc.) that might fill gaps. Then extract all 16 fields:
+Check which of the 16 fields are still empty and ask the PM — in one batch, not one at a time.
+Also accept any PRD, spec, or doc the PM wants to share to reduce questions further.
 
 | Field | What to look for |
 |---|---|
@@ -103,6 +109,7 @@ Assemble the extracted fields into a JSON object and write it to a temp file:
 cat > /tmp/eol_input.json << 'ENDJSON'
 {
   "product_name": "...",
+  "pm_name": "...",
   "date": "...",
   "announcement": "...",
   "key_dates": ["...", "..."],
@@ -122,13 +129,25 @@ cat > /tmp/eol_input.json << 'ENDJSON'
 ENDJSON
 ```
 
-### Step 3 — Run the script
+### Step 3 — Save to Asana (only if no existing task was found in Step 0)
+
+If Step 0 returned exit code `2` (no existing task), create the Asana record now:
+
+```bash
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/submit_asana.py" /tmp/eol_input.json
+```
+
+The script prints the new Asana task URL. Share it with the PM alongside the deck link.
+
+If Step 0 found an existing task, **skip this step** — do not create a duplicate.
+
+### Step 4 — Create the deck
 
 ```bash
 python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/create_deck.py" /tmp/eol_input.json
 ```
 
-The script copies the template, populates all slides, and prints the Google Slides URL.
+The script copies the Idira EOL template, populates all slides, and prints the Google Slides URL.
 
 **If auto-copy fails** (rare — when ADC doesn't have Drive access to the template):
 1. Ask the PM to open this URL to copy the template manually:
@@ -139,15 +158,18 @@ The script copies the template, populates all slides, and prints the Google Slid
 python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
 
-### Step 4 — Share the result
+### Step 5 — Share both outputs
 
-Give the PM the link and a brief note:
+Give the PM both links in one message:
 
-> ✅ Your EOL deck is ready: [link]
-> 
-> The template's **Slide 2** (EOL Roadmap) is a graphic — review it and mark
-> where the product currently sits on the journey. All other slides are
-> populated. Recommend sharing with the GTM team before the EOL session.
+> ✅ Done! Here's what was created:
+>
+> 📋 **Asana task**: [link] *(new — created from your answers)*
+>    OR: 📋 **Asana task**: [link] *(existing submission used)*
+>
+> 📊 **EOL deck**: [link]
+>
+> Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
 ---
 
