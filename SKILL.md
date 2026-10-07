@@ -1,5 +1,5 @@
 ---
-name: eol-deck-builder
+name: eol-launcher
 description: Creates a Idira End-of-Life (EOL) presentation deck in Google Slides by copying the Idira EOL template and auto-populating it from a PRD or any product context. Use when a PM wants to build an EOL deck, end-of-life session presentation, EOS deck, or product retirement slides. Trigger phrases: "EOL deck", "end of life deck", "EOS session deck", "product retirement slides", "create EOL presentation".
 disable-model-invocation: true
 ---
@@ -12,7 +12,7 @@ from a PRD, feature spec, or any product context the PM provides.
 ## Script
 
 ```
-/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/create_deck.py
+/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py
 ```
 
 ## Asana EOL Request Form
@@ -57,7 +57,7 @@ Ask the PM: **"What is the product or feature name?"**
 Then immediately search Asana:
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/fetch_asana.py" "<product name>"
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/fetch_asana.py" "<product name>"
 ```
 
 | Exit code | Meaning | What to do |
@@ -134,7 +134,7 @@ ENDJSON
 If Step 0 returned exit code `2` (no existing task), create the Asana record now:
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/submit_asana.py" /tmp/eol_input.json
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/submit_asana.py" /tmp/eol_input.json
 ```
 
 The script prints the new Asana task URL. Share it with the PM alongside the deck link.
@@ -144,7 +144,7 @@ If Step 0 found an existing task, **skip this step** — do not create a duplica
 ### Step 4 — Create the deck
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/create_deck.py" /tmp/eol_input.json
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py" /tmp/eol_input.json
 ```
 
 The script copies the Idira EOL template, populates all slides, and prints the Google Slides URL.
@@ -155,7 +155,7 @@ The script copies the Idira EOL template, populates all slides, and prints the G
 2. Ask for the new presentation ID (string between `/d/` and `/edit` in the URL)
 3. Re-run with the ID as a second argument:
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
 
 ### Step 5 — Share both outputs

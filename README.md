@@ -111,7 +111,7 @@ Sent in **one batch** — not one at a time.
 ## Files
 
 ```
-eol-deck-builder/
+eol-launcher/
 ├── README.md              ← you are here
 ├── SKILL.md               ← AI instructions (technical)
 └── scripts/
