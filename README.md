@@ -1,7 +1,7 @@
 # EOL Package — Cursor Agent Skill
 
 Handles the full End-of-Life process from a single conversation in Cursor.
-Tell the AI you're deprecating a product — it takes care of the paperwork and the deck.
+Tell the AI you're deprecating a product — it takes care of everything: the Asana task, the deck, and the calendar invite.
 
 ---
 
@@ -11,8 +11,9 @@ Tell the AI you're deprecating a product — it takes care of the paperwork and 
 |---|---|---|
 | 📋 | EOL request logged | [Asana — EOL Request form](https://app.asana.com/1/11915891072957/project/1214130454046893) |
 | 📊 | Session deck, fully populated | Google Slides (copy of the Idira EOL template) |
+| 📅 | 30-minute EOL review meeting | Google Calendar + Google Meet |
 
-Both are created in one flow. You don't open Asana, you don't touch the Slides template.
+All three are created automatically in one flow. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite.
 
 ---
 
@@ -36,13 +37,17 @@ AI searches Asana automatically
    Found?                    Not found?
      ↓                           ↓
 Use existing data          Ask you the questions
-Ask only for gaps          (all at once, one message)
+Ask only for gaps          (one at a time, conversationally)
      ↓                           ↓
-                    Create Asana task
+                    Create Asana task (if new)
                            ↓
                     Create Google Slides deck
                            ↓
-              Share both links with you
+          Create 30-min Google Meet invite
+          → Invites you, Yael, and Amir automatically
+          → Deck + Asana links included in the invite
+                           ↓
+              Share all links with you
 ```
 
 ---
@@ -64,45 +69,56 @@ Ask only for gaps          (all at once, one message)
 
 ---
 
+## The calendar invite
+
+- **Title:** EOL - [product name]
+- **Duration:** 30 minutes
+- **Format:** Google Meet
+- **Attendees:** You (the PM) + Yael Gershon + Amir Aviad
+- **Description:** includes a direct link to the deck and the Asana task
+- **Timing:** next available Israel working-day slot (Sun–Thu, 9am–5pm)
+
+---
+
 ## What the AI pulls from Asana automatically
 
 If you (or a teammate) already submitted the EOL request form, the AI finds and uses it — no link needed.
 
 | Pulled from Asana | Still asks you for |
 |---|---|
-| Product name | Deck presentation date |
-| EOL description | Key milestone dates |
-| Whether an alternative exists | Business rationale |
-| Submitter contact email | Open pipeline / ARR affected |
-| Task status | Escalation contact |
+| Product name | Key milestone / EOL date |
+| EOL description | Business rationale |
+| Whether an alternative exists | Actual alternative product name |
+| Submitter contact email | New / existing customer guidance |
+| Task status | Pricing & migration offer |
 | Whether SKUs are impacted | Actual SKU codes (if flagged) |
-| | New / existing customer guidance |
-| | Pricing & migration offer |
 | | Communication plan |
 
 ---
 
 ## Questions you may be asked
 
-Sent in **one batch** — not one at a time.
+Questions are asked **one at a time** — conversational, not a form dump.
 
-| Topic | Questions |
+| Topic | What's asked |
 |---|---|
-| **Basics** | Product name · Deck date |
-| **Announcement** | What's being EOLed (scope + date) · Key milestone dates |
-| **Rationale** | Why is this happening? |
-| **Customer impact** | Open deals / ARR · Escalation contact |
+| **Announcement** | What's being EOLed and when (EOL date) |
+| **Rationale** | Why is this happening? *(rephrased to polished business language)* |
 | **Sales guidance** | Message for new prospects · Transition offer for existing customers |
-| **Alternatives** | Replacement product + reasons · Pricing / migration offer |
-| **Communication** | Channels & timing · Who gets notified · Field contact |
+| **Alternatives** | Replacement product + reasons |
+| **Pricing** | Migration offer or pricing changes |
+| **Communication** | Channels & timing · Who gets notified |
 | **SKUs** | Specific SKU codes being retired |
-| **Status** *(optional)* | What has already happened in the EOL process |
+
+> **Auto-filled — never asked:**
+> - Deck date → current month + year
+> - Escalation contact → you (the submitting PM)
 
 ---
 
 ## Requirements
 
-- Cursor with your Google account connected (ADC configured)
+- Cursor with your Google account connected (ADC configured with Drive + Slides + Calendar scopes)
 - Access to the shared Idira EOL Google Slides template
 - Asana access (for reading/creating the EOL request form task)
 
@@ -112,10 +128,11 @@ Sent in **one batch** — not one at a time.
 
 ```
 eol-launcher/
-├── README.md              ← you are here
-├── SKILL.md               ← AI instructions (technical)
+├── README.md                  ← you are here
+├── SKILL.md                   ← AI instructions (technical)
 └── scripts/
-    ├── fetch_asana.py     ← searches Asana by product name, returns form data
-    ├── submit_asana.py    ← creates a new Asana task from PM answers
-    └── create_deck.py     ← copies the Idira EOL template + populates all slides
+    ├── fetch_asana.py         ← searches Asana by product name, returns form data
+    ├── submit_asana.py        ← creates a new Asana task from PM answers
+    ├── create_deck.py         ← copies the Idira EOL template + populates all slides
+    └── create_calendar.py     ← creates a 30-min Google Meet invite with deck + Asana links
 ```

@@ -75,18 +75,18 @@ python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor
 
 ### Step 1 — Collect remaining context
 
-Check which of the 16 fields are still empty and ask the PM — in one batch, not one at a time.
+Ask the PM one question at a time in a natural, conversational flow. Wait for each answer before asking the next. This keeps the interaction engaging and lets the PM answer thoughtfully rather than filling out a form.
 Also accept any PRD, spec, or doc the PM wants to share to reduce questions further.
 
 | Field | What to look for |
 |---|---|
 | `product_name` | Exact product/feature name being EOLed |
-| `date` | Deck presentation date (e.g. "Q2 2026") |
+| `date` | Auto-filled from current month+year (e.g. "October 2026") — never ask the PM for this |
 | `announcement` | One paragraph: what is being EOLed and when |
-| `key_dates` | List of milestone dates (announce, stop-sell, EOS, EOL) |
+| `key_dates` | Ask only: "When do you want the EOL date?" — use the answer as the single key date |
 | `rationale` | Bullet list: business/strategic reasons for EOL |
-| `open_opportunities` | Active deals / pipeline affected (count, ARR) |
-| `escalation` | Who to contact for affected deal escalations |
+| `open_opportunities` | Skip — do not ask the PM for this |
+| `escalation` | Auto-fill: always the submitting PM (use `pm_name` + `contact` fields) — never ask |
 | `for_new_customers` | What sales should do for new inquiries |
 | `for_existing_customers` | What to offer existing customers (migration, bridge) |
 | `alternatives` | Replacement product(s) and key value props |
@@ -99,7 +99,7 @@ Also accept any PRD, spec, or doc the PM wants to share to reduce questions furt
 
 **Do not leave any field blank or use "TBD" — ask the PM for missing info before running the script.**
 
-If context is incomplete, ask only the questions that are still unanswered (see **PM Interview Questions** below). Group them in one message, not one at a time.
+If context is incomplete, ask the remaining questions one at a time, conversationally. Do not dump all questions at once.
 
 ### Step 2 — Build the input JSON
 
@@ -158,16 +158,32 @@ The script copies the Idira EOL template, populates all slides, and prints the G
 python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
 
-### Step 5 — Share both outputs
+### Step 5 — Create the calendar invite
 
-Give the PM both links in one message:
+```bash
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_calendar.py" /tmp/eol_input.json "<deck_url>" "<asana_url>"
+```
 
-> ✅ Done! Here's what was created:
+The script creates a **30-minute Google Meet event** titled `"EOL - <product name>"`, invites the PM + Yael Gershon (`ygershongob@paloaltonetworks.com`) + Amir Aviad (`aaviad@paloaltonetworks.com`), and embeds the deck + Asana links in the description.
+
+- If the `calendar.readonly` scope is available: the script auto-finds the first free 30-min slot (Israel working hours, Sun–Thu 9am–5pm).
+- If not (403 on FreeBusy): defaults to the next working-day at 09:00 Israel time. The PM can reschedule from the invite if needed.
+
+The script prints JSON with `event_link` and `meet_link`.
+
+### Step 6 — Share all outputs
+
+Give the PM all three links in one message:
+
+> ✅ Done! Here's your full EOL package:
 >
 > 📋 **Asana task**: [link] *(new — created from your answers)*
 >    OR: 📋 **Asana task**: [link] *(existing submission used)*
 >
 > 📊 **EOL deck**: [link]
+>
+> 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
+> *(30 min · Yael & Amir invited · deck + Asana links in the invite)*
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
@@ -203,7 +219,7 @@ Give the PM both links in one message:
 
 Use these questions to fill any gaps after Step 0 (Asana) and Step 1 (docs/context).
 Questions marked **✅ Asana** are usually already answered from the form submission.
-Send all remaining unanswered questions in **one batch** — not one at a time.
+Ask questions **one at a time**, in a natural conversation. Wait for each answer before moving to the next.
 
 ---
 
@@ -222,14 +238,14 @@ Send all remaining unanswered questions in **one batch** — not one at a time.
 3. ✅ Asana — **In 2–3 sentences, what exactly is being EOLed?**
    *(From `EOL Description` CF. Edit or expand before using in the deck.)*
 
-4. **What are the key milestone dates in the EOL timeline?**
-   *(e.g., Announcement date, Last day to sell / stop-sell date, End of Support date, End of Life / sunset date)*
+4. **When do you want the EOL date?**
+   *(e.g. "Q2 2027" or "December 31, 2026")*
 
 ---
 
 ### 💼 Business Rationale (Slide 4)
 
-5. **Why is this product being EOLed?**
+5. **Why is this product being EOLed?** *(PM will give a candid answer — always rephrase into polished, politically correct business language before writing to the deck. E.g. "we're not investing in it" → "Idira is strategically reallocating resources toward higher-impact, next-generation capabilities.")*
    *(List the main business or strategic reasons — e.g., low adoption, superseded by a new offering, high maintenance cost, market shift.)*
 
 ---
