@@ -1,7 +1,9 @@
-# EOL Package — Cursor Agent Skill
+# EOL Kickoff Toolkit — Cursor Agent Skill
 
-Handles the full End-of-Life process from a single conversation in Cursor.
-Tell the AI you're deprecating a product — it takes care of everything: the Asana task, the deck, and the calendar invite.
+Your starting point for kicking off an End-of-Life process — from a single conversation in Cursor.
+Tell the AI you're deprecating a product and it handles the kickoff paperwork: logging the request, preparing the session deck, and scheduling the first meeting.
+
+> **Note:** This toolkit covers the kickoff phase. The full EOL process (legal review, customer communications, product sunset, etc.) continues beyond what this skill automates.
 
 ---
 
@@ -13,7 +15,7 @@ Tell the AI you're deprecating a product — it takes care of everything: the As
 | 📊 | Session deck, fully populated | Google Slides (copy of the Idira EOL template) |
 | 📅 | 30-minute EOL review meeting | Google Calendar + Google Meet |
 
-All three are created automatically in one flow. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite.
+All three are created automatically in one flow — giving you everything you need to kick off the EOL process. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite.
 
 ---
 
