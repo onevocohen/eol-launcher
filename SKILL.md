@@ -41,23 +41,31 @@ Fields Asana **never** fills: `date`, `key_dates`, `rationale`, `open_opportunit
 
 ## Workflow
 
-### Step 0 — Pull from Asana (always do this first)
+### Step 0 — Pull from Asana automatically (always do this first)
 
-If the PM shares an Asana task URL or GID, or mentions the product name, run:
+As soon as you know the product or EOL name, search Asana automatically — no URL needed:
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/fetch_asana.py" "<task_url_or_gid>"
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-deck-builder/scripts/fetch_asana.py" "<product name>"
 ```
 
-The script outputs a partial JSON. Read these `_asana_*` metadata fields to ask smarter follow-ups:
+**Exit code behaviour:**
 
-- `_asana_alternative_flag`: `"full"` → ask for the product name; `"partial"` → ask what's missing; `"none"` → flag this to the PM as a gap
+| Exit code | Meaning | What to do |
+|---|---|---|
+| `0` | Single match found — JSON output ready | Use the output, proceed to Step 1 |
+| `2` | No match found | Skip Asana, go straight to Step 1 |
+| `3` | Multiple matches — `_asana_multiple_matches` list in output | Ask PM: *"I found a few EOL submissions for that name — which one?"* then re-run with the chosen GID |
+
+**Read these `_asana_*` metadata fields to ask smarter follow-ups:**
+
+- `_asana_alternative_flag`: `"full"` → ask for the product name; `"partial"` → ask what's missing; `"none"` → flag this gap to the PM
 - `_asana_has_skus`: `"Yes"` → ask for the specific SKU codes; `"No"` → set `impacted_skus: []`
 - `_asana_full_description`: mine this for rationale, customer impact, and existing-customer guidance
 - `_asana_due_on`: use as a key date anchor if present
 - `_asana_submitter` / `contact`: pre-fill the contact field
 
-If no Asana URL is given, skip to Step 1.
+If the PM provides an Asana URL or task GID directly, pass that instead of the product name — the script handles both.
 
 ### Step 1 — Collect remaining context
 

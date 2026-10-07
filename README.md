@@ -32,13 +32,13 @@ A fully populated copy of the Idira EOL template (11 slides), ready to review an
 > *"Build an end-of-life presentation for [product]"*
 > *"Make an EOS session deck"*
 
-Then give the AI one or more of the following (the more you share, the fewer questions it asks):
+Then give the AI the product name — that's it. It will:
 
-- ✅ Your **Asana EOL request form task** URL or link
-- ✅ A **PRD or product spec** (pasted text or URL)
-- ✅ A **free-form description** of the EOL — whatever you have
+1. **Search Asana automatically** for your EOL request form submission
+2. Pull everything it can from there
+3. Ask you only for what's still missing
 
-The AI will pull what it can automatically, then ask you only for what's missing.
+You can also optionally share a PRD, spec, or any additional context to reduce the follow-up questions further.
 
 ---
 
@@ -46,7 +46,7 @@ The AI will pull what it can automatically, then ask you only for what's missing
 
 The skill is connected to the [EOL - Request form](https://app.asana.com/1/11915891072957/project/1214130454046893) project in Asana.
 
-When you share an Asana task link, the AI automatically extracts:
+The AI searches it automatically by product name — **you never need to find or share the task link**. When it finds your submission, it automatically extracts:
 
 | Extracts automatically | Still asks you for |
 |---|---|
