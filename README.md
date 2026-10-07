@@ -1,7 +1,14 @@
 # EOL Kickoff Toolkit — Cursor Agent Skill
 
+> *Deprecating a product is never fun. At least the paperwork can be.*
+
+Sunsetting a product means juggling Asana forms, Slides templates, and calendar invites — before the real work even begins. This skill handles all of that in a single conversation.
+
+Just tell Cursor what you're deprecating. It asks you the right questions, one at a time, then takes care of the rest: the Asana request, the session deck, and the kickoff meeting invite — all ready before you close the chat.
+
+---
+
 Your starting point for kicking off an End-of-Life process — from a single conversation in Cursor.
-Tell the AI you're deprecating a product and it handles the kickoff paperwork: logging the request, preparing the session deck, and scheduling the first meeting.
 
 > **Note:** This toolkit covers the kickoff phase. The full EOL process (legal review, customer communications, product sunset, etc.) continues beyond what this skill automates.
 
