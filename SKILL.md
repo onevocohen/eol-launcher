@@ -1,6 +1,6 @@
 ---
-name: eol-launcher
-description: Creates a Idira End-of-Life (EOL) presentation deck in Google Slides by copying the Idira EOL template and auto-populating it from a PRD or any product context. Use when a PM wants to build an EOL deck, end-of-life session presentation, EOS deck, or product retirement slides. Trigger phrases: "EOL deck", "end of life deck", "EOS session deck", "product retirement slides", "create EOL presentation".
+name: EOL Kickoff Toolkit
+description: Kicks off the full EOL process for a product or feature — searches Asana for an existing request, asks the PM questions one at a time, creates an Asana task (if new), generates a fully populated Google Slides EOL deck, and schedules a 30-minute Google Meet kickoff meeting with the relevant stakeholders. Use when a PM wants to deprecate a product, start an EOL process, or create an EOL deck. Trigger phrases: "EOL", "end of life", "deprecate", "EOL deck", "EOS", "product retirement", "start an EOL", "kick off EOL".
 disable-model-invocation: true
 ---
 
