@@ -1,13 +1,13 @@
 # EOL Deck Builder
 
-Automatically generates a CyberArk End-of-Life session deck in Google Slides.
+Automatically generates a Idira End-of-Life session deck in Google Slides.
 Give the AI your Asana task, a PRD, or just a description — it builds the deck and hands you a link.
 
 ---
 
 ## What you get
 
-A fully populated copy of the CyberArk EOL template (11 slides), ready to review and present:
+A fully populated copy of the Idira EOL template (11 slides), ready to review and present:
 
 | Slide | Content |
 |---|---|
@@ -90,7 +90,7 @@ Questions are sent **in one batch** — not one at a time. Here's what to expect
 11. Are there pricing changes, migration discounts, or bridge offers?
 
 ### Communication Plan
-12. How and when will CyberArk communicate this EOL to customers?
+12. How and when will Idira communicate this EOL to customers?
 13. Which customer segments will receive the notice?
 14. Who is the primary contact for EOL questions from the field?
 
@@ -105,7 +105,7 @@ Questions are sent **in one batch** — not one at a time. Here's what to expect
 ## Requirements
 
 - Cursor with your Google account connected (ADC set up)
-- Access to the shared CyberArk EOL Google Slides template
+- Access to the shared Idira EOL Google Slides template
 - Asana access *(optional — only needed if pulling from the request form)*
 
 ---

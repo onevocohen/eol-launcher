@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-create_deck.py — Build a CyberArk EOL Google Slides deck from structured JSON.
+create_deck.py — Build a Idira EOL Google Slides deck from structured JSON.
 
 Copies the shared EOL template, then populates each slide with real content.
 
@@ -19,7 +19,7 @@ Input JSON fields:
     for_existing_customers (str)  Guidance for renewals / existing contracts
     alternatives           (str)  Alternative solutions to offer
     pricing_impact         (str)  Pricing transition details
-    communication          (str)  How / when CyberArk will communicate
+    communication          (str)  How / when Idira will communicate
     who_notified           (str)  Customer segments to notify
     contact                (str)  Point of contact for questions
     impacted_skus          (list) SKU codes / names affected
@@ -184,7 +184,7 @@ def build_requests(slides, d):
 
     # ── Slide 8: Communication Plan ───────────────────────────────────────────
     if len(slides) > 7:
-        body = (f"How will CyberArk communicate?\n{d.get('communication', '')}\n\n"
+        body = (f"How will Idira communicate?\n{d.get('communication', '')}\n\n"
                 f"Who will be notified?\n{d.get('who_notified', '')}\n\n"
                 f"Contact for More Info:\n{d.get('contact', '')}")
         replace_body(slides[7], body, reqs)

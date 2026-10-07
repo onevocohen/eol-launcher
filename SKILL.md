@@ -1,12 +1,12 @@
 ---
 name: eol-deck-builder
-description: Creates a CyberArk End-of-Life (EOL) presentation deck in Google Slides by copying the CyberArk EOL template and auto-populating it from a PRD or any product context. Use when a PM wants to build an EOL deck, end-of-life session presentation, EOS deck, or product retirement slides. Trigger phrases: "EOL deck", "end of life deck", "EOS session deck", "product retirement slides", "create EOL presentation".
+description: Creates a Idira End-of-Life (EOL) presentation deck in Google Slides by copying the Idira EOL template and auto-populating it from a PRD or any product context. Use when a PM wants to build an EOL deck, end-of-life session presentation, EOS deck, or product retirement slides. Trigger phrases: "EOL deck", "end of life deck", "EOS session deck", "product retirement slides", "create EOL presentation".
 disable-model-invocation: true
 ---
 
 # EOL Deck Builder
 
-Copies the shared CyberArk EOL template and auto-populates all 9 content slides
+Copies the shared Idira EOL template and auto-populates all 9 content slides
 from a PRD, feature spec, or any product context the PM provides.
 
 ## Script
@@ -165,7 +165,7 @@ Give the PM the link and a brief note:
 
 - Python 3.6+
 - Google ADC at `~/.config/gcloud/application_default_credentials.json` with Drive + Slides scopes
-- The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds (template is shared with all CyberArk staff)
+- The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds (template is shared with all Idira staff)
 
 ---
 
@@ -236,7 +236,7 @@ Send all remaining unanswered questions in **one batch** — not one at a time.
 
 ### 📣 Communication Plan (Slide 8)
 
-12. **How and when will CyberArk communicate this EOL to customers?**
+12. **How and when will Idira communicate this EOL to customers?**
     *(Channels: email, in-app banner, partner portal, direct CSM call, etc. Include expected timing.)*
 
 13. **Which customer segments will receive the EOL notice?**
