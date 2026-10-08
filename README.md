@@ -4,7 +4,7 @@
 
 Sunsetting a product means juggling Asana forms, Slides templates, and calendar invites — before the real work even begins. This skill handles all of that in a single conversation.
 
-Just tell Cursor what you're deprecating. It asks you the right questions, one at a time, then takes care of the rest: the Asana request, the session deck, and the kickoff meeting invite — all ready before you close the chat.
+Just tell Cursor what you're deprecating. It asks you the right questions, one at a time, then takes care of the rest: the Asana request, the session deck, the kickoff meeting invite, and a private Slack channel — all ready before you close the chat.
 
 ---
 
@@ -21,8 +21,9 @@ Your starting point for kicking off an End-of-Life process — from a single con
 | 📋 | EOL request logged | [Asana — EOL Request form](https://app.asana.com/1/11915891072957/project/1214130454046893) |
 | 📊 | Session deck, fully populated | Google Slides (copy of the Idira EOL template) |
 | 📅 | 30-minute EOL review meeting | Google Calendar + Google Meet |
+| 💬 | Private Slack channel created | Slack — PM, Yael & Amir invited |
 
-All three are created automatically in one flow — giving you everything you need to kick off the EOL process. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite.
+All four are created automatically in one flow — giving you everything you need to kick off the EOL process. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite, you don't set up a channel.
 
 ---
 
@@ -56,6 +57,10 @@ Ask only for gaps          (one at a time, conversationally)
           → Invites you, Yael, and Amir automatically
           → Deck + Asana links included in the invite
                            ↓
+        Create private Slack channel
+        → Invites you, Yael, and Amir (+ anyone else you name)
+        → Intro message posted with deck + Asana links
+                           ↓
               Share all links with you
 ```
 
@@ -75,6 +80,15 @@ Ask only for gaps          (one at a time, conversationally)
 | 8 | Communication Plan — channels, segments, contact |
 | 9 | Technical & SKU Details — impacted SKU codes |
 | 10 | Q&A |
+
+---
+
+## The Slack channel
+
+- **Name:** `#eol-<normalized-product-name>` *(lowercase, hyphens)*
+- **Type:** Private
+- **Attendees:** You (the PM) + Yael Gershon + Amir Aviad + anyone extra you name
+- **First message:** intro post with links to the deck and Asana task
 
 ---
 
@@ -118,6 +132,7 @@ Questions are asked **one at a time** — conversational, not a form dump.
 | **Pricing** | Migration offer or pricing changes |
 | **Communication** | Channels & timing · Who gets notified |
 | **SKUs** | Specific SKU codes being retired |
+| **Additional Slack members** | Anyone beyond you, Yael & Amir to invite to the channel |
 
 > **Auto-filled — never asked:**
 > - Deck date → current month + year
@@ -130,6 +145,7 @@ Questions are asked **one at a time** — conversational, not a form dump.
 - Cursor with your Google account connected (ADC configured with Drive + Slides + Calendar scopes)
 - Access to the shared Idira EOL Google Slides template
 - Asana access (for reading/creating the EOL request form task)
+- Slack bot token with scopes: `groups:write`, `groups:read`, `users:read`, `users:read.email`, `chat:write`
 
 ---
 
@@ -143,5 +159,6 @@ eol-launcher/
     ├── fetch_asana.py         ← searches Asana by product name, returns form data
     ├── submit_asana.py        ← creates a new Asana task from PM answers
     ├── create_deck.py         ← copies the Idira EOL template + populates all slides
-    └── create_calendar.py     ← creates a 30-min Google Meet invite with deck + Asana links
+    ├── create_calendar.py     ← creates a 30-min Google Meet invite with deck + Asana links
+    └── create_slack_channel.py ← creates a private Slack channel + invites members
 ```

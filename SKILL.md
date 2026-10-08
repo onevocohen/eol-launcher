@@ -96,6 +96,7 @@ Also accept any PRD, spec, or doc the PM wants to share to reduce questions furt
 | `contact` | Email / Slack for EOL questions |
 | `impacted_skus` | List of affected SKU codes / names |
 | `status_notes` | (Optional) Current status for the roadmap slide |
+| `slack_additional_members` | Ask: *"Anyone else to add to the Slack channel?"* — accept a list of emails; leave as `[]` if none |
 
 **Do not leave any field blank or use "TBD" — ask the PM for missing info before running the script.**
 
@@ -124,7 +125,8 @@ cat > /tmp/eol_input.json << 'ENDJSON'
   "who_notified": "...",
   "contact": "...",
   "impacted_skus": ["...", "..."],
-  "status_notes": "..."
+  "status_notes": "...",
+  "slack_additional_members": []
 }
 ENDJSON
 ```
@@ -171,9 +173,17 @@ The script creates a **30-minute Google Meet event** titled `"EOL - <product nam
 
 The script prints JSON with `event_link` and `meet_link`.
 
-### Step 6 — Share all outputs
+### Step 6 — Create the Slack channel
 
-Give the PM all three links in one message:
+```bash
+python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
+```
+
+Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Amir + anyone in `slack_additional_members`, and posts an intro message with the deck and Asana links.
+
+### Step 7 — Share all outputs
+
+Give the PM all four links in one message:
 
 > ✅ Done! Here's your full EOL package:
 >
@@ -184,6 +194,8 @@ Give the PM all three links in one message:
 >
 > 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
 > *(30 min · Yael & Amir invited · deck + Asana links in the invite)*
+>
+> 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Amir invited)*
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
