@@ -187,7 +187,7 @@ The script prints JSON with `event_link` and `meet_link`.
 ### Step 6 — Create the Slack channel
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
+python3 "$SKILL_DIR/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
 ```
 
 Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Amir + anyone in `slack_additional_members`, and posts an intro message with the deck and Asana links.
