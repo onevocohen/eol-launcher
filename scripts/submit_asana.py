@@ -146,9 +146,14 @@ def map_alternative(d):
 
 
 def map_sku(d):
-    """Map impacted_skus to Yes/No enum GID."""
+    """Map impacted_skus to Yes/No enum GID.
+    Treats TBD / None / N/A / empty strings as 'No'."""
     skus = d.get("impacted_skus", [])
-    if isinstance(skus, list) and len(skus) > 0:
+    _no_values = {"tbd", "none", "n/a", "no", "unknown", ""}
+    if isinstance(skus, list):
+        meaningful = [s for s in skus if str(s).strip().lower() not in _no_values]
+        return SKU_YES if meaningful else SKU_NO
+    if isinstance(skus, str) and skus.strip().lower() not in _no_values:
         return SKU_YES
     return SKU_NO
 

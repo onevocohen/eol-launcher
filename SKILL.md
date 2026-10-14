@@ -62,7 +62,7 @@ PM mentions EOL → search Asana → found? use it : ask questions → save to A
 Before asking any questions, let the PM know upfront:
 > "Great, let's kick off the EOL process! This will take a few minutes — I'm connected to several external apps (Asana, Google Slides, Google Calendar, and Slack) and need to talk to each one. Sit tight!"
 
-Ask the PM: **"What is the product or feature name?"**
+Ask the PM two quick questions to start — **"What is your name?"** and **"What is the product or feature name?"** (ask them one at a time). Use the PM's name as `pm_name` in the JSON — never default to Orit's name or leave it blank.
 
 Then immediately search Asana:
 
@@ -90,6 +90,7 @@ Also accept any PRD, spec, or doc the PM wants to share to reduce questions furt
 
 | Field | What to look for |
 |---|---|
+| `pm_name` | Full name of the PM submitting this EOL — always ask, never default to Orit |
 | `product_name` | Exact product/feature name being EOLed |
 | `date` | Auto-filled from current month+year (e.g. "October 2026") — never ask the PM for this |
 | `announcement` | One paragraph: what is being EOLed and when |
