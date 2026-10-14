@@ -103,8 +103,10 @@ def main():
     asana_url  = sys.argv[2]
     deck_url   = sys.argv[3]
     product    = d.get("product_name", "EOL")
-    pm_email   = d.get("contact", "")
-    extra      = d.get("slack_additional_members", [])
+    # Split contact field in case it contains multiple comma-separated emails
+    raw_contact = d.get("contact", "")
+    pm_emails   = [e.strip() for e in raw_contact.split(",") if "@" in e.strip()]
+    extra       = d.get("slack_additional_members", [])
 
     token = get_token()
 
@@ -129,7 +131,7 @@ def main():
 
     # ── 2. Resolve user IDs ────────────────────────────────────────────────────
     all_emails = list(dict.fromkeys(
-        FIXED_MEMBERS + ([pm_email] if pm_email else []) + (extra or [])
+        FIXED_MEMBERS + pm_emails + (extra or [])
     ))
     user_ids = []
     for email in all_emails:
