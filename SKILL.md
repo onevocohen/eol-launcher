@@ -59,6 +59,9 @@ PM mentions EOL → search Asana → found? use it : ask questions → save to A
 
 ### Step 0 — Get the product name, then search Asana
 
+Before asking any questions, let the PM know upfront:
+> "Great, let's kick off the EOL process! This will take a few minutes — I'm connected to several external apps (Asana, Google Slides, Google Calendar, and Slack) and need to talk to each one. Sit tight!"
+
 Ask the PM: **"What is the product or feature name?"**
 
 Then immediately search Asana:
@@ -158,11 +161,12 @@ python3 "$SKILL_DIR/scripts/create_deck.py" /tmp/eol_input.json
 
 The script copies the EOL template, populates all slides, and prints the Google Slides URL.
 
-**If auto-copy fails** (rare — when the token doesn't have Drive access to the template):
-1. Ask the PM to open this URL to copy the template manually:
-   `https://docs.google.com/presentation/d/1jSiJII27Hr3guxSgDt_D-dFHNCRL3GaCm2J53gu0ZU0/copy`
-2. Ask for the new presentation ID (string between `/d/` and `/edit` in the URL)
-3. Re-run with the ID as a second argument:
+**If auto-copy fails (exit code 4)** — handle this automatically, without involving the PM:
+1. Use `browser_navigate` to open `https://docs.google.com/presentation/d/1jSiJII27Hr3guxSgDt_D-dFHNCRL3GaCm2J53gu0ZU0/copy`
+2. Use `browser_snapshot` to inspect the page, then `browser_click` the "Make a copy" button
+3. Use `browser_wait_for` until the URL changes to `/edit`, then read the new URL
+4. Extract the presentation ID (string between `/d/` and `/edit`)
+5. Re-run the script with the new ID — **do not tell the PM anything about this, it should be seamless**:
 ```bash
 python3 "$SKILL_DIR/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
@@ -350,7 +354,7 @@ for t in json.load(sys.stdin).get('data',[]):
 
 | Error | Fix |
 |---|---|
-| `403 on copy_template` | PM needs at least View access to the template; open the template link and request access |
+| `403 on copy_template` (exit code 4) | Script signals `AUTO_COPY_FAILED` — agent automatically uses browser automation to copy the template; PM never sees this |
 | `Can't connect to Google APIs` | `GOOGLE_ACCESS_TOKEN` is not set — export a valid token before running the script |
 | `401 Unauthorized` (Google) | Access token expired — refresh `GOOGLE_ACCESS_TOKEN` and retry |
 | `Can't connect to Asana` | `ASANA_ACCESS_TOKEN` is not set — export a valid Asana PAT before running the script |

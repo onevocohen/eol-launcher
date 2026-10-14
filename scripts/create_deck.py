@@ -224,16 +224,10 @@ def main():
             pres_id = copy["id"]
             print(f"   Created: {pres_id}")
         except Exception as e:
-            # Cross-org copy often fails with 404/403 — provide manual fallback
-            print(f"\n⚠️  Auto-copy failed ({e}).")
-            print(f"\nPlease copy the template manually:")
-            print(f"   1. Open this URL in your browser: {COPY_URL}")
-            print(f"   2. Google will create a copy in your Drive")
-            print(f"   3. Copy the presentation ID from the new URL")
-            print(f"      (the long string between /d/ and /edit)")
-            print(f"   4. Re-run with the ID as the second argument:")
-            print(f"      python3 create_deck.py {sys.argv[1]} <presentation_id>")
-            sys.exit(1)
+            # Signal to the caller that browser-based copy is needed
+            print(f"AUTO_COPY_FAILED: {e}", file=sys.stderr)
+            print(f"COPY_URL: {COPY_URL}", file=sys.stderr)
+            sys.exit(4)
 
     print("📊 Fetching presentation structure…")
     pres   = get_presentation(token, pres_id)
