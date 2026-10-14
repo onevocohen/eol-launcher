@@ -6,14 +6,21 @@ disable-model-invocation: true
 
 # EOL Deck Builder
 
-Copies the shared Idira EOL template and auto-populates all 9 content slides
+Copies the shared EOL template and auto-populates all 9 content slides
 from a PRD, feature spec, or any product context the PM provides.
 
-## Script
+## Script location
 
+The scripts live in the `scripts/` subdirectory alongside this `SKILL.md`.
+At the start of each workflow step below, resolve the skill directory and assign it:
+
+```bash
+SKILL_DIR="<full path to the directory containing this SKILL.md>"
 ```
-/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py
-```
+
+The agent reading this file knows its own path and must substitute the actual directory before running any command.
+
+---
 
 ## Asana EOL Request Form
 
@@ -57,7 +64,7 @@ Ask the PM: **"What is the product or feature name?"**
 Then immediately search Asana:
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/fetch_asana.py" "<product name>"
+python3 "$SKILL_DIR/scripts/fetch_asana.py" "<product name>"
 ```
 
 | Exit code | Meaning | What to do |
@@ -136,7 +143,7 @@ ENDJSON
 If Step 0 returned exit code `2` (no existing task), create the Asana record now:
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/submit_asana.py" /tmp/eol_input.json
+python3 "$SKILL_DIR/scripts/submit_asana.py" /tmp/eol_input.json
 ```
 
 The script prints the new Asana task URL. Share it with the PM alongside the deck link.
@@ -146,27 +153,27 @@ If Step 0 found an existing task, **skip this step** — do not create a duplica
 ### Step 4 — Create the deck
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py" /tmp/eol_input.json
+python3 "$SKILL_DIR/scripts/create_deck.py" /tmp/eol_input.json
 ```
 
-The script copies the Idira EOL template, populates all slides, and prints the Google Slides URL.
+The script copies the EOL template, populates all slides, and prints the Google Slides URL.
 
-**If auto-copy fails** (rare — when ADC doesn't have Drive access to the template):
+**If auto-copy fails** (rare — when the token doesn't have Drive access to the template):
 1. Ask the PM to open this URL to copy the template manually:
    `https://docs.google.com/presentation/d/1jSiJII27Hr3guxSgDt_D-dFHNCRL3GaCm2J53gu0ZU0/copy`
 2. Ask for the new presentation ID (string between `/d/` and `/edit` in the URL)
 3. Re-run with the ID as a second argument:
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
+python3 "$SKILL_DIR/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
 
 ### Step 5 — Create the calendar invite
 
 ```bash
-python3 "/Users/onevocohen/Library/Application Support/Cursor/AgentStores/cursor_agent_stores/7e93e542-cc75-4818-830f-089df36e7650/files/skills/eol-launcher/scripts/create_calendar.py" /tmp/eol_input.json "<deck_url>" "<asana_url>"
+python3 "$SKILL_DIR/scripts/create_calendar.py" /tmp/eol_input.json "<deck_url>" "<asana_url>"
 ```
 
-The script creates a **30-minute Google Meet event** titled `"EOL - <product name>"`, invites the PM + Yael Gershon (`ygershongob@paloaltonetworks.com`) + Amir Aviad (`aaviad@paloaltonetworks.com`), and embeds the deck + Asana links in the description.
+The script creates a **30-minute Google Meet event** titled `"EOL - <product name>"`, invites the PM plus any reviewers listed in the `EOL_REVIEW_ATTENDEES` environment variable, and embeds the deck + Asana links in the description.
 
 - If the `calendar.readonly` scope is available: the script auto-finds the first free 30-min slot (Israel working hours, Sun–Thu 9am–5pm).
 - If not (403 on FreeBusy): defaults to the next working-day at 09:00 Israel time. The PM can reschedule from the invite if needed.
@@ -193,7 +200,7 @@ Give the PM all four links in one message:
 > 📊 **EOL deck**: [link]
 >
 > 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
-> *(30 min · Yael & Amir invited · deck + Asana links in the invite)*
+> *(30 min · review attendees invited · deck + Asana links in the invite)*
 >
 > 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Amir invited)*
 >
@@ -222,8 +229,11 @@ Give the PM all four links in one message:
 ## Requirements
 
 - Python 3.6+
-- Google ADC at `~/.config/gcloud/application_default_credentials.json` with Drive + Slides scopes
-- The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds (template is shared with all Idira staff)
+- `ASANA_ACCESS_TOKEN` — Asana personal access token (set as environment variable)
+- `GOOGLE_ACCESS_TOKEN` — Google OAuth2 access token with Drive + Slides + Calendar scopes (set as environment variable)
+- `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; omit if not needed
+- `EOL_REVIEW_ATTENDEES` *(optional)* — comma-separated reviewer email addresses to include in the calendar invite (e.g. `alice@example.com,bob@example.com`)
+- The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds
 
 ---
 
@@ -257,7 +267,7 @@ Ask questions **one at a time**, in a natural conversation. Wait for each answer
 
 ### 💼 Business Rationale (Slide 4)
 
-5. **Why is this product being EOLed?** *(PM will give a candid answer — always rephrase into polished, politically correct business language before writing to the deck. E.g. "we're not investing in it" → "Idira is strategically reallocating resources toward higher-impact, next-generation capabilities.")*
+5. **Why is this product being EOLed?** *(PM will give a candid answer — always rephrase into polished, politically correct business language before writing to the deck. E.g. "we're not investing in it" → "The company is strategically reallocating resources toward higher-impact, next-generation capabilities.")*
    *(List the main business or strategic reasons — e.g., low adoption, superseded by a new offering, high maintenance cost, market shift.)*
 
 ---
@@ -294,7 +304,7 @@ Ask questions **one at a time**, in a natural conversation. Wait for each answer
 
 ### 📣 Communication Plan (Slide 8)
 
-12. **How and when will Idira communicate this EOL to customers?**
+12. **How and when will the company communicate this EOL to customers?**
     *(Channels: email, in-app banner, partner portal, direct CSM call, etc. Include expected timing.)*
 
 13. **Which customer segments will receive the EOL notice?**
@@ -324,9 +334,8 @@ Ask questions **one at a time**, in a natural conversation. Wait for each answer
 If the PM doesn't have the task URL, search the EOL project by name:
 
 ```bash
-TOKEN=$(bash ~/.config/secrets/get-secret.sh ASANA_ACCESS_TOKEN)
 curl -s "https://app.asana.com/api/1.0/projects/1214130454046893/tasks?opt_fields=name,gid,completed" \
-  -H "Authorization: Bearer $TOKEN" | python3 -c "
+  -H "Authorization: Bearer $ASANA_ACCESS_TOKEN" | python3 -c "
 import json,sys,re
 term=input('Product name to search: ').lower()
 for t in json.load(sys.stdin).get('data',[]):
@@ -342,7 +351,8 @@ for t in json.load(sys.stdin).get('data',[]):
 | Error | Fix |
 |---|---|
 | `403 on copy_template` | PM needs at least View access to the template; open the template link and request access |
-| `ADC file not found` | Run: `gcloud auth application-default login` with the required scopes |
-| `401 Unauthorized` | ADC token expired — re-run `gcloud auth application-default login` |
+| `Can't connect to Google APIs` | `GOOGLE_ACCESS_TOKEN` is not set — export a valid token before running the script |
+| `401 Unauthorized` (Google) | Access token expired — refresh `GOOGLE_ACCESS_TOKEN` and retry |
+| `Can't connect to Asana` | `ASANA_ACCESS_TOKEN` is not set — export a valid Asana PAT before running the script |
 | Slides show old placeholder text | Some slides have multiple BODY elements; check `status_notes` keyword match in create_deck.py |
 | `fetch_asana.py` returns empty | Task GID may be wrong — verify the last number in the Asana URL is the task (not the project or section) |

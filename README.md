@@ -27,6 +27,30 @@ All four are created automatically in one flow — giving you everything you nee
 
 ---
 
+## Installation
+
+**One-time setup — takes about a minute.**
+
+1. **Clone the repo** into Cursor's skills folder:
+
+   ```bash
+   git clone https://github.com/onevocohen/eol-launcher ~/.cursor/skills/eol-deck
+   ```
+
+   Already downloaded it somewhere else? Symlink it instead:
+
+   ```bash
+   ln -s /path/to/eol-deck ~/.cursor/skills/eol-deck
+   ```
+
+2. **Reload Cursor** — press `Cmd + Shift + P` → *Reload Window* (or just quit and reopen).
+
+3. **Done.** The skill registers automatically. No config files, no environment variables to set up manually — your Google and Asana credentials are already connected through Cursor.
+
+> **Note:** The `scripts/` folder must stay alongside `SKILL.md` in the same directory. If you move files around, keep that structure intact.
+
+---
+
 ## How to start
 
 **Say any of these in Cursor:**

@@ -13,18 +13,20 @@ Usage:
 Outputs: calendar event HTML link + Google Meet URL
 """
 
-import json, sys, urllib.request, urllib.parse, os
+import json, sys, urllib.request, os
 from datetime import datetime, timedelta, timezone
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 IL_TZ = timezone(timedelta(hours=3))   # Israel Standard / Daylight (approx)
 
-FIXED_ATTENDEES = [
-    "ygershongob@paloaltonetworks.com",
-    "onevocohen@paloaltonetworks.com",
-    "aaviad@paloaltonetworks.com",
-]
+QUOTA_PROJECT = os.environ.get("GOOGLE_QUOTA_PROJECT", "")
+
+
+def get_fixed_attendees():
+    """Read EOL_REVIEW_ATTENDEES env var (comma-separated emails) and return a list."""
+    val = os.environ.get("EOL_REVIEW_ATTENDEES", "").strip()
+    return [e.strip() for e in val.split(",") if e.strip()]
 
 def next_il_working_slot(from_dt=None):
     """Return the next 09:00 Israel time on a working day (Sun–Thu)."""
@@ -38,32 +40,26 @@ def next_il_working_slot(from_dt=None):
         candidate += timedelta(days=1)
     return candidate
 
-def refresh_token():
-    adc_path = os.path.expanduser(
-        "~/.config/gcloud/application_default_credentials.json"
-    )
-    with open(adc_path) as f:
-        creds = json.load(f)
-    data = urllib.parse.urlencode({
-        "client_id":     creds["client_id"],
-        "client_secret": creds["client_secret"],
-        "refresh_token": creds["refresh_token"],
-        "grant_type":    "refresh_token",
-    }).encode()
-    req = urllib.request.Request(
-        "https://oauth2.googleapis.com/token", data=data, method="POST"
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())["access_token"]
+def get_token():
+    token = os.environ.get("GOOGLE_ACCESS_TOKEN", "").strip()
+    if not token:
+        print(
+            "Error: GOOGLE_ACCESS_TOKEN environment variable is not set. "
+            "Can't connect to Google APIs.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return token
 
 def freebusy_query(token, attendees, time_min, time_max):
     """Return a dict {email: [{'start':…,'end':…}, …]} of busy blocks.
     Returns None if the API returns 403 (insufficient scope)."""
     headers = {
-        "Authorization":     f"Bearer {token}",
-        "X-Goog-User-Project": "pntops",
-        "Content-Type":      "application/json",
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json",
     }
+    if QUOTA_PROJECT:
+        headers["X-Goog-User-Project"] = QUOTA_PROJECT
     body = json.dumps({
         "timeMin": time_min.isoformat(),
         "timeMax": time_max.isoformat(),
@@ -135,14 +131,15 @@ def main():
     pm_email   = d.get("contact", "")
     pm_name    = d.get("pm_name", "")
 
-    token = refresh_token()
+    token = get_token()
 
     # ── resolve start time ──
     if len(sys.argv) >= 5:
         start = datetime.fromisoformat(sys.argv[4])
     else:
         # Try FreeBusy first; fall back to next working slot at 09:00
-        all_attendees = list(set(FIXED_ATTENDEES + ([pm_email] if pm_email else [])))
+        fixed_attendees = get_fixed_attendees()
+        all_attendees = list(set(fixed_attendees + ([pm_email] if pm_email else [])))
         search_start = next_il_working_slot()
         search_end   = search_start + timedelta(days=7)
         busy = freebusy_query(token, all_attendees, search_start, search_end)
@@ -161,16 +158,17 @@ def main():
         end = end.replace(tzinfo=IL_TZ)
 
     # ── build attendee list ──
-    attendee_emails = set(FIXED_ATTENDEES)
+    attendee_emails = set(get_fixed_attendees())
     if pm_email:
         attendee_emails.add(pm_email)
 
     # ── create event ──
     headers = {
-        "Authorization":     f"Bearer {token}",
-        "X-Goog-User-Project": "pntops",
-        "Content-Type":      "application/json",
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json",
     }
+    if QUOTA_PROJECT:
+        headers["X-Goog-User-Project"] = QUOTA_PROJECT
     event = {
         "summary": f"EOL - {product}",
         "description": (

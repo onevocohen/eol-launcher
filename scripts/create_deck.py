@@ -30,41 +30,37 @@ import json
 import sys
 import os
 import urllib.request
-import urllib.parse
 
 TEMPLATE_ID   = "1jSiJII27Hr3guxSgDt_D-dFHNCRL3GaCm2J53gu0ZU0"
 COPY_URL      = f"https://docs.google.com/presentation/d/{TEMPLATE_ID}/copy"
 SLIDES_API    = "https://slides.googleapis.com/v1/presentations"
 DRIVE_API     = "https://www.googleapis.com/drive/v3/files"
-TOKEN_URL     = "https://oauth2.googleapis.com/token"
-ADC_PATH      = os.path.expanduser("~/.config/gcloud/application_default_credentials.json")
-QUOTA_PROJECT = "pntops"
+QUOTA_PROJECT = os.environ.get("GOOGLE_QUOTA_PROJECT", "")
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
 def get_token():
-    with open(ADC_PATH) as f:
-        creds = json.load(f)
-    data = urllib.parse.urlencode({
-        "client_id":     creds["client_id"],
-        "client_secret": creds["client_secret"],
-        "refresh_token": creds["refresh_token"],
-        "grant_type":    "refresh_token",
-    }).encode()
-    req = urllib.request.Request(TOKEN_URL, data=data, method="POST")
-    with urllib.request.urlopen(req) as resp:
-        return json.load(resp)["access_token"]
+    token = os.environ.get("GOOGLE_ACCESS_TOKEN", "").strip()
+    if not token:
+        print(
+            "Error: GOOGLE_ACCESS_TOKEN environment variable is not set. "
+            "Can't connect to Google APIs.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return token
 
 
 # ── HTTP helpers ──────────────────────────────────────────────────────────────
 
 def api(url, token, method="GET", body=None):
     headers = {
-        "Authorization":      f"Bearer {token}",
-        "X-Goog-User-Project": QUOTA_PROJECT,
-        "Content-Type":       "application/json",
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json",
     }
+    if QUOTA_PROJECT:
+        headers["X-Goog-User-Project"] = QUOTA_PROJECT
     data = json.dumps(body).encode() if body else None
     req  = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
@@ -184,7 +180,7 @@ def build_requests(slides, d):
 
     # ── Slide 8: Communication Plan ───────────────────────────────────────────
     if len(slides) > 7:
-        body = (f"How will Idira communicate?\n{d.get('communication', '')}\n\n"
+        body = (f"Communication Plan:\n{d.get('communication', '')}\n\n"
                 f"Who will be notified?\n{d.get('who_notified', '')}\n\n"
                 f"Contact for More Info:\n{d.get('contact', '')}")
         replace_body(slides[7], body, reqs)

@@ -18,12 +18,10 @@ Output: prints the new Asana task URL to stdout.
 import json
 import sys
 import os
-import subprocess
 import urllib.request
 import urllib.parse
 
 ASANA_API       = "https://app.asana.com/api/1.0"
-SECRET_SCRIPT   = os.path.expanduser("~/.config/secrets/get-secret.sh")
 EOL_PROJECT_GID = "1214130454046893"
 
 # Custom field GIDs
@@ -47,11 +45,15 @@ SKU_NO      = "1215960352578633"   # "No"
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
 def get_token():
-    result = subprocess.run(
-        ["bash", SECRET_SCRIPT, "ASANA_ACCESS_TOKEN"],
-        capture_output=True, text=True, check=True
-    )
-    return result.stdout.strip()
+    token = os.environ.get("ASANA_ACCESS_TOKEN", "").strip()
+    if not token:
+        print(
+            "Error: ASANA_ACCESS_TOKEN environment variable is not set. "
+            "Can't connect to Asana.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return token
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
