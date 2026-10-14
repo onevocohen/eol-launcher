@@ -36,6 +36,7 @@ COPY_URL      = f"https://docs.google.com/presentation/d/{TEMPLATE_ID}/copy"
 SLIDES_API    = "https://slides.googleapis.com/v1/presentations"
 DRIVE_API     = "https://www.googleapis.com/drive/v3/files"
 QUOTA_PROJECT = os.environ.get("GOOGLE_QUOTA_PROJECT", "")
+EOL_FOLDER_ID = "1xu1sh1ttQIrX3ztb-pQh9ZCfkxTLwrJt"  # EOL deck shared Drive folder
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -73,8 +74,12 @@ def api(url, token, method="GET", body=None):
 
 def copy_template(token, title):
     # supportsAllDrives=true is required when the template lives in a Shared Drive
-    return api(f"{DRIVE_API}/{TEMPLATE_ID}/copy?supportsAllDrives=true",
-               token, "POST", {"name": title})
+    # parents places the new deck directly in the EOL shared folder
+    return api(
+        f"{DRIVE_API}/{TEMPLATE_ID}/copy?supportsAllDrives=true",
+        token, "POST",
+        {"name": title, "parents": [EOL_FOLDER_ID]},
+    )
 
 
 def get_presentation(token, pres_id):
