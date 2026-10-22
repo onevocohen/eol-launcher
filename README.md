@@ -27,6 +27,24 @@ All four are created automatically in one flow — giving you everything you nee
 
 ---
 
+## 📊 Usage Statistics
+
+<!-- USAGE_STATS_START -->
+| Metric | Count |
+|---|---|
+| ✅ EOL sessions completed | **0** |
+| 👤 Unique PMs who used this skill | **0** |
+| 📦 Unique products processed | **0** |
+
+*Last updated: October 22, 2026 at 13:36 UTC*
+
+**Per-PM breakdown:** *No completed EOLs yet.*
+<!-- USAGE_STATS_END -->
+
+> Stats are tracked locally in `metrics/usage.json` and updated automatically at the end of each EOL session. To refresh them manually, run: `python3 scripts/track_usage.py update-readme`
+
+---
+
 ## Installation
 
 **One-time setup — takes about a minute.**
@@ -179,10 +197,13 @@ Questions are asked **one at a time** — conversational, not a form dump.
 eol-launcher/
 ├── README.md                  ← you are here
 ├── SKILL.md                   ← AI instructions (technical)
+├── metrics/
+│   └── usage.json             ← usage log (auto-updated after each EOL session)
 └── scripts/
     ├── fetch_asana.py         ← searches Asana by product name, returns form data
     ├── submit_asana.py        ← creates a new Asana task from PM answers
     ├── create_deck.py         ← copies the Idira EOL template + populates all slides
     ├── create_calendar.py     ← creates a 30-min Google Meet invite with deck + Asana links
-    └── create_slack_channel.py ← creates a private Slack channel + invites members
+    ├── create_slack_channel.py ← creates a private Slack channel + invites members
+    └── track_usage.py         ← logs usage events + updates README stats
 ```
