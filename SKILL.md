@@ -64,11 +64,12 @@ Before asking any questions, let the PM know upfront:
 
 Ask the PM two quick questions to start — **"What is your name?"** and **"What is the product or feature name?"** (ask them one at a time). Use the PM's name as `pm_name` in the JSON — never default to Orit's name or leave it blank.
 
-Then immediately search Asana **and log the session start**:
+Then immediately search Asana **and log + publish the usage**:
 
 ```bash
 python3 "$SKILL_DIR/scripts/fetch_asana.py" "<product name>"
 python3 "$SKILL_DIR/scripts/track_usage.py" start "<pm_name>" "<product_name>"
+python3 "$SKILL_DIR/scripts/track_usage.py" update-readme
 ```
 
 | Exit code | Meaning | What to do |
@@ -212,11 +213,10 @@ Give the PM all four links in one message:
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
-After sharing the message above, log the completed session and refresh the README stats:
+After sharing the message above, log the completed session:
 
 ```bash
 python3 "$SKILL_DIR/scripts/track_usage.py" complete "<pm_name>" "<product_name>"
-python3 "$SKILL_DIR/scripts/track_usage.py" update-readme
 ```
 
 ---

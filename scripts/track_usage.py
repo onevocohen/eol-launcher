@@ -56,33 +56,34 @@ def log_event(event: str, pm_name: str, product_name: str):
 
 
 def compute_stats() -> dict:
-    data      = load_log()
-    runs      = data.get("runs", [])
-    completed = [r for r in runs if r.get("event") == "complete"]
+    data  = load_log()
+    runs  = data.get("runs", [])
+    # Count every usage (start events = each time the skill is triggered)
+    starts = [r for r in runs if r.get("event") == "start"]
 
-    pm_counts = Counter(r["pm_name"] for r in completed)
-    products  = sorted(set(r["product_name"] for r in completed))
+    pm_counts = Counter(r["pm_name"] for r in starts)
+    products  = sorted(set(r["product_name"] for r in starts))
 
     return {
-        "total_completed":  len(completed),
-        "unique_pms":       len(pm_counts),
-        "unique_products":  len(products),
-        "pm_breakdown":     dict(pm_counts.most_common()),
-        "all_products":     products,
+        "total_uses":      len(starts),
+        "unique_pms":      len(pm_counts),
+        "unique_products": len(products),
+        "pm_breakdown":    dict(pm_counts.most_common()),
+        "all_products":    products,
     }
 
 
 def generate_report():
     stats = compute_stats()
-    print(f"Total EOL sessions completed : {stats['total_completed']}")
+    print(f"Total times skill used       : {stats['total_uses']}")
     print(f"Unique PMs                   : {stats['unique_pms']}")
     print(f"Unique products processed    : {stats['unique_products']}")
     if stats["pm_breakdown"]:
         print("\nPer-PM breakdown:")
         for pm, count in stats["pm_breakdown"].items():
-            print(f"  {pm}: {count} EOL(s)")
+            print(f"  {pm}: {count} use(s)")
     else:
-        print("\nNo completed EOLs yet.")
+        print("\nSkill hasn't been used yet.")
     return stats
 
 
@@ -95,9 +96,9 @@ def build_stats_block(stats: dict) -> str:
     lines += [
         "| Metric | Count |",
         "|---|---|",
-        f"| ✅ EOL sessions completed | **{stats['total_completed']}** |",
-        f"| 👤 Unique PMs who used this skill | **{stats['unique_pms']}** |",
-        f"| 📦 Unique products processed | **{stats['unique_products']}** |",
+        f"| 🚀 Times skill used | **{stats['total_uses']}** |",
+        f"| 👤 Unique PMs | **{stats['unique_pms']}** |",
+        f"| 📦 Unique products | **{stats['unique_products']}** |",
         "",
         f"*Last updated: {now}*",
         "",
@@ -113,7 +114,7 @@ def build_stats_block(stats: dict) -> str:
         for pm, count in stats["pm_breakdown"].items():
             lines.append(f"| {pm} | {count} |")
     else:
-        lines.append("**Per-PM breakdown:** *No completed EOLs yet.*")
+        lines.append("**Per-PM breakdown:** *Skill hasn't been used yet.*")
 
     lines.append(STATS_END)
     return "\n".join(lines)

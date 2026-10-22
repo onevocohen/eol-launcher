@@ -32,16 +32,16 @@ All four are created automatically in one flow — giving you everything you nee
 <!-- USAGE_STATS_START -->
 | Metric | Count |
 |---|---|
-| ✅ EOL sessions completed | **0** |
-| 👤 Unique PMs who used this skill | **0** |
-| 📦 Unique products processed | **0** |
+| 🚀 Times skill used | **0** |
+| 👤 Unique PMs | **0** |
+| 📦 Unique products | **0** |
 
-*Last updated: October 22, 2026 at 13:36 UTC*
+*Last updated: October 22, 2026 at 13:38 UTC*
 
-**Per-PM breakdown:** *No completed EOLs yet.*
+**Per-PM breakdown:** *Skill hasn't been used yet.*
 <!-- USAGE_STATS_END -->
 
-> Stats are tracked locally in `metrics/usage.json` and updated automatically at the end of each EOL session. To refresh them manually, run: `python3 scripts/track_usage.py update-readme`
+> Stats are tracked locally in `metrics/usage.json` and updated automatically each time the skill is triggered. To refresh them manually, run: `python3 scripts/track_usage.py update-readme`
 
 ---
 
