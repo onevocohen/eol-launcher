@@ -32,13 +32,17 @@ All four are created automatically in one flow — giving you everything you nee
 <!-- USAGE_STATS_START -->
 | Metric | Count |
 |---|---|
-| 🚀 Times skill used | **0** |
-| 👤 Unique PMs | **0** |
-| 📦 Unique products | **0** |
+| 🚀 Times skill used | **1** |
+| 👤 Unique PMs | **1** |
+| 📦 Unique products | **1** |
 
-*Last updated: October 22, 2026 at 13:38 UTC*
+*Last updated: November 08, 2026 at 08:38 UTC*
 
-**Per-PM breakdown:** *Skill hasn't been used yet.*
+**Per-PM breakdown:**
+
+| PM | EOL sessions |
+|---|---|
+| Orit | 1 |
 <!-- USAGE_STATS_END -->
 
 > Stats are tracked locally in `metrics/usage.json` and updated automatically each time the skill is triggered. To refresh them manually, run: `python3 scripts/track_usage.py update-readme`
@@ -66,6 +70,12 @@ All four are created automatically in one flow — giving you everything you nee
 3. **Done.** The skill registers automatically. No config files, no environment variables to set up manually — your Google and Asana credentials are already connected through Cursor.
 
 > **Note:** The `scripts/` folder must stay alongside `SKILL.md` in the same directory. If you move files around, keep that structure intact.
+
+### Claude Code
+
+Open this repository in Claude Code. The project skill is available as `/eol-kickoff-toolkit`, and [CLAUDE.md](./CLAUDE.md) provides project guidance. The skill uses the workflow in the repository-root `SKILL.md` and the scripts in `scripts/`.
+
+Before running the workflow, configure the required credentials in Claude Code's environment: `ASANA_ACCESS_TOKEN`, `GOOGLE_ACCESS_TOKEN`, and either `SLACK_USER_TOKEN` or `SLACK_BOT_TOKEN`. Never commit credentials. The workflow creates live Asana, Google, and Slack resources.
 
 ---
 
