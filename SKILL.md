@@ -245,8 +245,8 @@ python3 "$SKILL_DIR/scripts/track_usage.py" complete "<pm_name>" "<product_name>
 
 - Python 3.6+
 - `ASANA_ACCESS_TOKEN` — Asana personal access token (set as environment variable)
-- `GOOGLE_ACCESS_TOKEN` — Google OAuth2 access token with Drive + Slides + Calendar scopes (set as environment variable)
-- `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; omit if not needed
+- Google + Slack credentials: `create_deck.py`, `create_calendar.py` and `create_slack_channel.py` call APIs through `scripts/vault_http.py`, which uses `GOOGLE_ACCESS_TOKEN` / `SLACK_USER_TOKEN` / `SLACK_BOT_TOKEN` env vars if set, and otherwise the sealed pm-claude-code-setup Keychain vault (the token never enters the script). Slack prefers the user token and falls back to the bot token.
+- `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; defaults to `pntops` when using the vault
 - `EOL_REVIEW_ATTENDEES` *(optional)* — comma-separated reviewer email addresses to include in the calendar invite (e.g. `alice@example.com,bob@example.com`)
 - The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds
 
@@ -366,7 +366,7 @@ for t in json.load(sys.stdin).get('data',[]):
 | Error | Fix |
 |---|---|
 | `403 on copy_template` (exit code 4) | Script signals `AUTO_COPY_FAILED` — agent automatically uses browser automation to copy the template; PM never sees this |
-| `Can't connect to Google APIs` | `GOOGLE_ACCESS_TOKEN` is not set — export a valid token before running the script |
+| `Can't connect to Google APIs` | Neither `GOOGLE_ACCESS_TOKEN` nor the vault Google credential is available — re-run the Google Workspace connection in pm-claude-code-setup |
 | `401 Unauthorized` (Google) | Access token expired — refresh `GOOGLE_ACCESS_TOKEN` and retry |
 | `Can't connect to Asana` | `ASANA_ACCESS_TOKEN` is not set — export a valid Asana PAT before running the script |
 | Slides show old placeholder text | Some slides have multiple BODY elements; check `status_notes` keyword match in create_deck.py |

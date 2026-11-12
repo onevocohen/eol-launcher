@@ -13,14 +13,14 @@ Usage:
 Outputs: calendar event HTML link + Google Meet URL
 """
 
-import json, sys, urllib.request, os
+import json, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import google_api, ApiError  # noqa: E402
 from datetime import datetime, timedelta, timezone
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 IL_TZ = timezone(timedelta(hours=3))   # Israel Standard / Daylight (approx)
-
-QUOTA_PROJECT = os.environ.get("GOOGLE_QUOTA_PROJECT", "")
 
 
 def get_fixed_attendees():
@@ -41,43 +41,23 @@ def next_il_working_slot(from_dt=None):
     return candidate
 
 def get_token():
-    token = os.environ.get("GOOGLE_ACCESS_TOKEN", "").strip()
-    if not token:
-        print(
-            "Error: GOOGLE_ACCESS_TOKEN environment variable is not set. "
-            "Can't connect to Google APIs.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return token
+    return None  # kept for call-site compatibility; vault_http resolves auth
 
 def freebusy_query(token, attendees, time_min, time_max):
     """Return a dict {email: [{'start':…,'end':…}, …]} of busy blocks.
     Returns None if the API returns 403 (insufficient scope)."""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type":  "application/json",
-    }
-    if QUOTA_PROJECT:
-        headers["X-Goog-User-Project"] = QUOTA_PROJECT
-    body = json.dumps({
-        "timeMin": time_min.isoformat(),
-        "timeMax": time_max.isoformat(),
-        "items":   [{"id": a} for a in attendees],
-    }).encode()
-    req = urllib.request.Request(
-        "https://www.googleapis.com/calendar/v3/freeBusy",
-        data=body, headers=headers, method="POST"
-    )
     try:
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
+        result = google_api("https://www.googleapis.com/calendar/v3/freeBusy", "POST", {
+            "timeMin": time_min.isoformat(),
+            "timeMax": time_max.isoformat(),
+            "items":   [{"id": a} for a in attendees],
+        })
         return {
             email: cal.get("busy", [])
             for email, cal in result.get("calendars", {}).items()
         }
-    except urllib.error.HTTPError as e:
-        if e.code == 403:
+    except ApiError as e:
+        if e.status == 403:
             return None   # scope insufficient — caller falls back to default slot
         raise
 
@@ -89,8 +69,8 @@ def find_first_free_slot(busy_by_email, attendees, duration_min=30):
     all_busy = []
     for email in attendees:
         for b in busy_by_email.get(email, []):
-            s = datetime.fromisoformat(b["start"])
-            e = datetime.fromisoformat(b["end"])
+            s = datetime.fromisoformat(b["start"].replace("Z", "+00:00"))
+            e = datetime.fromisoformat(b["end"].replace("Z", "+00:00"))
             all_busy.append((s, e))
 
     # Check every 30-min slot over the next 7 working days
@@ -163,12 +143,6 @@ def main():
         attendee_emails.add(pm_email)
 
     # ── create event ──
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type":  "application/json",
-    }
-    if QUOTA_PROJECT:
-        headers["X-Goog-User-Project"] = QUOTA_PROJECT
     event = {
         "summary": f"EOL - {product}",
         "description": (
@@ -188,14 +162,11 @@ def main():
         "reminders": {"useDefault": True},
     }
 
-    body = json.dumps(event).encode()
-    url  = "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all"
-    req  = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all"
     try:
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        print(f"ERROR creating calendar event: {e.code} {e.read().decode()}", file=sys.stderr)
+        result = google_api(url, "POST", event)
+    except ApiError as e:
+        print(f"ERROR creating calendar event: {e.status} {e.body}", file=sys.stderr)
         sys.exit(1)
 
     html_link = result.get("htmlLink", "")

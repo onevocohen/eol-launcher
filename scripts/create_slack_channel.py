@@ -9,7 +9,9 @@ Usage:
 Outputs JSON with channel_id, channel_name, channel_url.
 """
 
-import json, sys, subprocess, urllib.request, urllib.parse, re
+import json, sys, os, urllib.parse, re
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import slack_api  # noqa: E402
 
 FIXED_MEMBERS = [
     "ygershongob@paloaltonetworks.com",   # Yael
@@ -23,36 +25,19 @@ SLACK_API = "https://slack.com/api"
 
 
 def get_token():
-    """Try user token first (default), fall back to bot token."""
-    for key, prefix in (("SLACK_USER_TOKEN", "xoxp-"), ("SLACK_BOT_TOKEN", "xoxb-")):
-        r = subprocess.run(f"bash ~/.config/secrets/get-secret.sh {key}",
-                           shell=True, capture_output=True, text=True)
-        token = r.stdout.strip()
-        if token and token.startswith(prefix):
-            return token
-    print("ERROR: No valid Slack token found (SLACK_USER_TOKEN or SLACK_BOT_TOKEN)", file=sys.stderr)
-    sys.exit(1)
+    return None  # kept for call-site compatibility; vault_http resolves auth
+                 # (SLACK_USER_TOKEN by default, SLACK_BOT_TOKEN as fallback)
 
 
 def slack_post(endpoint, token, payload):
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f"{SLACK_API}/{endpoint}",
-        data=body,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    return slack_api(f"{SLACK_API}/{endpoint}", "POST", payload)
 
 
 def slack_get(endpoint, token, params=None):
     url = f"{SLACK_API}/{endpoint}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    return slack_api(url)
 
 
 def normalize_channel_name(product_name):
