@@ -15,6 +15,7 @@ from vault_http import slack_api  # noqa: E402
 
 FIXED_MEMBERS = [
     "ygershongob@paloaltonetworks.com",   # Yael
+    "onevocohen@paloaltonetworks.com",    # Orit Nevo Cohen
 ]
 # Pricing stakeholders — invited only when pricing is relevant, i.e. SKUs are
 # impacted. Feature deprecations with no SKU skip them.

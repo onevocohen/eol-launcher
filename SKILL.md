@@ -195,7 +195,7 @@ The script prints JSON with `event_link` and `meet_link`.
 python3 "$SKILL_DIR/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
 ```
 
-Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + anyone in `slack_additional_members`, plus Amir only when pricing is relevant (`impacted_skus` is non-empty), and posts an intro message with the deck and Asana links.
+Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Orit Nevo Cohen + anyone in `slack_additional_members`, plus Amir only when pricing is relevant (`impacted_skus` is non-empty), and posts an intro message with the deck and Asana links.
 
 ### Step 7 — Share all outputs
 
@@ -211,7 +211,7 @@ Give the PM all four links in one message:
 > 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
 > *(30 min · review attendees invited · deck + Asana links in the invite)*
 >
-> 💬 **Slack channel**: [#channel-name] *(private · PM & Yael invited, plus Amir when pricing is relevant)*
+> 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Orit invited, plus Amir when pricing is relevant)*
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
