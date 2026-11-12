@@ -80,10 +80,14 @@ python3 "$SKILL_DIR/scripts/track_usage.py" update-readme
 
 **`_asana_*` hints for smarter follow-ups:**
 - `_asana_alternative_flag`: `"full"` → ask for product name; `"partial"` → ask what's missing; `"none"` → flag gap
-- `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []`
+- `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []` and treat it as a **feature deprecation** (see below)
+
+**Feature deprecation (no SKU):** If `_asana_has_skus` is `"No"` (or the PM confirms no SKU is affected), the EOL is for a feature, not a sold product. In that case **do not ask any pricing questions** (question 11, pricing changes / migration discounts / bridge offers). Set `pricing_impact` to `"No pricing impact — feature deprecation with no associated SKU."` automatically. Amir (pricing) is also not relevant, so he is **not** invited to the Slack channel (`create_slack_channel.py` skips him automatically when `impacted_skus` is empty).
 - `_asana_full_description`: mine for rationale, customer impact, existing-customer guidance
 - `_asana_due_on`: anchor for key dates
 - `_asana_submitter` / `contact`: pre-fill contact field
+- `asana_project_url`: present when the request was **converted to an Asana project**. Always copy it into the input JSON (Step 2) unchanged. `create_slack_channel.py` then links the project in the channel intro. Tell the PM which project was found. Do not ask the PM for it, and do not invent it if absent.
+- `_asana_converted_to_project`: `true` with **no** `asana_project_url` means the request was converted, but the project was renamed or created separately and couldn't be matched automatically. Ask the PM: *"This request was converted to an Asana project. What's the project link?"* Put their answer in `asana_project_url`.
 
 ### Step 1 — Collect remaining context
 
@@ -103,12 +107,13 @@ Also accept any PRD, spec, or doc the PM wants to share to reduce questions furt
 | `for_new_customers` | What sales should do for new inquiries |
 | `for_existing_customers` | What to offer existing customers (migration, bridge) |
 | `alternatives` | Replacement product(s) and key value props |
-| `pricing_impact` | Pricing changes, migration offer, discounts |
+| `pricing_impact` | Pricing changes, migration offer, discounts — skip for feature deprecations with no SKU (auto-fill "No pricing impact — feature deprecation with no associated SKU.") |
 | `communication` | Channels and timeline for customer communications |
 | `who_notified` | Which customer segments receive notice |
 | `contact` | Email / Slack for EOL questions |
 | `impacted_skus` | List of affected SKU codes / names |
 | `status_notes` | (Optional) Current status for the roadmap slide |
+| `asana_project_url` | Auto-filled by `fetch_asana.py` when the request was converted to an Asana project — never ask |
 | `slack_additional_members` | Ask: *"Anyone else to add to the Slack channel?"* — accept a list of emails; leave as `[]` if none |
 
 **Do not leave any field blank or use "TBD" — ask the PM for missing info before running the script.**
@@ -139,9 +144,13 @@ cat > /tmp/eol_input.json << 'ENDJSON'
   "contact": "...",
   "impacted_skus": ["...", "..."],
   "status_notes": "...",
-  "slack_additional_members": []
+  "slack_additional_members": [],
+  "asana_project_url": "..."
 }
 ENDJSON
+```
+
+Include `asana_project_url` only when `fetch_asana.py` returned it; otherwise omit the key.
 ```
 
 ### Step 3 — Save to Asana (only if no existing task was found in Step 0)
@@ -193,7 +202,7 @@ The script prints JSON with `event_link` and `meet_link`.
 python3 "$SKILL_DIR/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
 ```
 
-Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Amir + anyone in `slack_additional_members`, and posts an intro message with the deck and Asana links.
+Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Orit Nevo Cohen + anyone in `slack_additional_members`, plus Amir only when pricing is relevant (`impacted_skus` is non-empty), and posts an intro message with the deck and Asana links. When `asana_project_url` is set, the intro also links the Asana project the request was converted to.
 
 ### Step 7 — Share all outputs
 
@@ -204,12 +213,14 @@ Give the PM all four links in one message:
 > 📋 **Asana task**: [link] *(new — created from your answers)*
 >    OR: 📋 **Asana task**: [link] *(existing submission used)*
 >
+> 🗂️ **Asana project**: [link] *(only when the request was converted to a project — also linked in Slack)*
+>
 > 📊 **EOL deck**: [link]
 >
 > 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
 > *(30 min · review attendees invited · deck + Asana links in the invite)*
 >
-> 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Amir invited)*
+> 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Orit invited, plus Amir when pricing is relevant)*
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 
@@ -242,9 +253,9 @@ python3 "$SKILL_DIR/scripts/track_usage.py" complete "<pm_name>" "<product_name>
 ## Requirements
 
 - Python 3.6+
-- `ASANA_ACCESS_TOKEN` — Asana personal access token (set as environment variable)
-- `GOOGLE_ACCESS_TOKEN` — Google OAuth2 access token with Drive + Slides + Calendar scopes (set as environment variable)
-- `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; omit if not needed
+- `ASANA_ACCESS_TOKEN` — Asana personal access token, from the environment variable if set, otherwise the sealed pm-claude-code-setup Keychain vault (via `scripts/vault_http.py`)
+- Google + Slack credentials: `create_deck.py`, `create_calendar.py` and `create_slack_channel.py` call APIs through `scripts/vault_http.py`, which uses `GOOGLE_ACCESS_TOKEN` / `SLACK_USER_TOKEN` / `SLACK_BOT_TOKEN` env vars if set, and otherwise the sealed pm-claude-code-setup Keychain vault (the token never enters the script). Slack prefers the user token and falls back to the bot token.
+- `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; defaults to `pntops` when using the vault
 - `EOL_REVIEW_ATTENDEES` *(optional)* — comma-separated reviewer email addresses to include in the calendar invite (e.g. `alice@example.com,bob@example.com`)
 - The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds
 
@@ -310,7 +321,7 @@ Ask questions **one at a time**, in a natural conversation. Wait for each answer
 10. ⚠️ Asana hint — **What is the recommended alternative product or solution?**
     *(Asana tells us if there's a full / partial / no alternative. Ask for the product name and 2–3 key reasons it replaces the EOLed product.)*
 
-11. **Will there be any pricing changes, migration discounts, or bridge offers?**
+11. **Will there be any pricing changes, migration discounts, or bridge offers?** *(Skip entirely for feature deprecations with no SKU — auto-fill `pricing_impact` instead.)*
     *(Even a rough answer helps — e.g., "20% discount for migrating within 6 months".)*
 
 ---
@@ -364,8 +375,8 @@ for t in json.load(sys.stdin).get('data',[]):
 | Error | Fix |
 |---|---|
 | `403 on copy_template` (exit code 4) | Script signals `AUTO_COPY_FAILED` — agent automatically uses browser automation to copy the template; PM never sees this |
-| `Can't connect to Google APIs` | `GOOGLE_ACCESS_TOKEN` is not set — export a valid token before running the script |
+| `Can't connect to Google APIs` | Neither `GOOGLE_ACCESS_TOKEN` nor the vault Google credential is available — re-run the Google Workspace connection in pm-claude-code-setup |
 | `401 Unauthorized` (Google) | Access token expired — refresh `GOOGLE_ACCESS_TOKEN` and retry |
-| `Can't connect to Asana` | `ASANA_ACCESS_TOKEN` is not set — export a valid Asana PAT before running the script |
+| `Can't connect to Asana` | `ASANA_ACCESS_TOKEN` is in neither the environment nor the vault — re-run the Asana connection in pm-claude-code-setup |
 | Slides show old placeholder text | Some slides have multiple BODY elements; check `status_notes` keyword match in create_deck.py |
 | `fetch_asana.py` returns empty | Task GID may be wrong — verify the last number in the Asana URL is the task (not the project or section) |

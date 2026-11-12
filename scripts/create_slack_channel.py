@@ -6,49 +6,42 @@ Creates a private Slack channel for the EOL and invites relevant members.
 Usage:
   python3 create_slack_channel.py <eol_input.json> <asana_url> <deck_url>
 
+If the input JSON has asana_project_url (set by fetch_asana.py when the EOL
+request was converted to an Asana project), the intro message links it too.
+
 Outputs JSON with channel_id, channel_name, channel_url.
 """
 
-import json, sys, subprocess, urllib.request, urllib.parse, re
+import json, sys, os, urllib.parse, re
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import slack_api  # noqa: E402
 
 FIXED_MEMBERS = [
     "ygershongob@paloaltonetworks.com",   # Yael
+    "onevocohen@paloaltonetworks.com",    # Orit Nevo Cohen
+]
+# Pricing stakeholders — invited only when pricing is relevant, i.e. SKUs are
+# impacted. Feature deprecations with no SKU skip them.
+PRICING_MEMBERS = [
     "aaviad@paloaltonetworks.com",         # Amir
 ]
 SLACK_API = "https://slack.com/api"
 
 
 def get_token():
-    """Try user token first (default), fall back to bot token."""
-    for key, prefix in (("SLACK_USER_TOKEN", "xoxp-"), ("SLACK_BOT_TOKEN", "xoxb-")):
-        r = subprocess.run(f"bash ~/.config/secrets/get-secret.sh {key}",
-                           shell=True, capture_output=True, text=True)
-        token = r.stdout.strip()
-        if token and token.startswith(prefix):
-            return token
-    print("ERROR: No valid Slack token found (SLACK_USER_TOKEN or SLACK_BOT_TOKEN)", file=sys.stderr)
-    sys.exit(1)
+    return None  # kept for call-site compatibility; vault_http resolves auth
+                 # (SLACK_USER_TOKEN by default, SLACK_BOT_TOKEN as fallback)
 
 
 def slack_post(endpoint, token, payload):
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f"{SLACK_API}/{endpoint}",
-        data=body,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    return slack_api(f"{SLACK_API}/{endpoint}", "POST", payload)
 
 
 def slack_get(endpoint, token, params=None):
     url = f"{SLACK_API}/{endpoint}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    return slack_api(url)
 
 
 def normalize_channel_name(product_name):
@@ -130,8 +123,10 @@ def main():
         sys.exit(1)
 
     # ── 2. Resolve user IDs ────────────────────────────────────────────────────
+    pricing_relevant = bool(d.get("impacted_skus"))
     all_emails = list(dict.fromkeys(
-        FIXED_MEMBERS + pm_emails + (extra or [])
+        FIXED_MEMBERS + (PRICING_MEMBERS if pricing_relevant else [])
+        + pm_emails + (extra or [])
     ))
     user_ids = []
     for email in all_emails:
@@ -151,9 +146,15 @@ def main():
             print(f"WARNING: Invite issue: {invite.get('error')}", file=sys.stderr)
 
     # ── 4. Post intro message ──────────────────────────────────────────────────
+    project_url = (d.get("asana_project_url") or "").strip()
+    project_line = (
+        f"🗂️ Asana project: {project_url} _(the EOL request was converted to this "
+        f"project — track EOL execution tasks there)_\n" if project_url else ""
+    )
     intro = (
         f":wave: *EOL Kickoff: {product}*\n\n"
         f"📋 Asana task: {asana_url}\n"
+        f"{project_line}"
         f"📊 Deck: {deck_url}\n\n"
         f"_This channel is the home for all coordination around this EOL._"
     )

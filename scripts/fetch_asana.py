@@ -14,6 +14,9 @@ Exit codes:
     2  — no matching task found (AI should fall back to PM questions)
     3  — multiple matches found, JSON list printed to stdout (AI picks one)
 
+If the request was converted to an Asana project, the output includes
+asana_project_url (pass it through to create_slack_channel.py via the JSON).
+
 Output: JSON to stdout (_asana_* keys are metadata for the AI)
 """
 
@@ -21,7 +24,11 @@ import json
 import re
 import sys
 import os
-import urllib.request
+import urllib.parse
+from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import asana_api  # noqa: E402
 
 ASANA_API       = "https://app.asana.com/api/1.0"
 EOL_PROJECT_GID = "1214130454046893"   # "EOL - Request form" project
@@ -35,30 +42,18 @@ CF_STATUS       = "1215924922501012"
 CF_SKU          = "1215960352578631"
 CF_COMMENTS     = "1205617554352324"
 
-
-# ── Auth ─────────────────────────────────────────────────────────────────────
-
-def get_token():
-    token = os.environ.get("ASANA_ACCESS_TOKEN", "").strip()
-    if not token:
-        print(
-            "Error: ASANA_ACCESS_TOKEN environment variable is not set. "
-            "Can't connect to Asana.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return token
+CONVERTED_PREFIX = "[Converted to project]"
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
 
+def get_token():
+    return None  # kept for call-site compatibility; vault_http resolves auth
+                 # (ASANA_ACCESS_TOKEN env var, else the sealed Keychain vault)
+
+
 def asana_get(path, token):
-    req = urllib.request.Request(
-        f"{ASANA_API}{path}",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    with urllib.request.urlopen(req) as resp:
-        return json.load(resp).get("data", {})
+    return asana_api(f"{ASANA_API}{path}").get("data", {})
 
 
 # ── URL / GID parsing ─────────────────────────────────────────────────────────
@@ -173,10 +168,76 @@ def search_project(term, token):
     if not isinstance(tasks, list):
         tasks = []
 
+    # When a request is converted to a project, Asana leaves a completed
+    # "[Converted to project] <name>" stub next to the original. Treat the pair
+    # as one submission: keep the stub only if no non-stub task has its name.
+    live_names = {t.get("name", "").strip().lower() for t in tasks
+                  if not t.get("name", "").startswith(CONVERTED_PREFIX)}
+    tasks = [t for t in tasks
+             if not (t.get("name", "").startswith(CONVERTED_PREFIX)
+                     and strip_converted(t["name"]).lower() in live_names)]
+
     scored = [(score_match(t, term), t) for t in tasks]
     scored = [(s, t) for s, t in scored if s >= 2]   # require at least substring match
     scored.sort(key=lambda x: x[0], reverse=True)
     return scored
+
+
+def strip_converted(name):
+    return name[len(CONVERTED_PREFIX):].strip() if name.startswith(CONVERTED_PREFIX) else name.strip()
+
+
+# ── Converted-project lookup ──────────────────────────────────────────────────
+
+def _ts(value):
+    try:
+        return datetime.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")
+    except (TypeError, ValueError):
+        return None
+
+
+def find_converted_project(base_name, token):
+    """
+    Return (converted, project). converted is True if the request has a
+    "[Converted to project]" stub; project is {"gid", "name", "url"} for the
+    Asana project it was converted to, or None if it can't be identified.
+
+    Asana does not link a converted request to its project. Conversion leaves a
+    completed "[Converted to project] <name>" stub in the EOL project and
+    creates a project named <name> seconds earlier. Match on that: same name
+    (case-insensitive) and created within 10 minutes of the stub's completion.
+    """
+    tasks = asana_get(
+        f"/projects/{EOL_PROJECT_GID}/tasks?opt_fields=name,completed_at", token)
+    stubs = [t for t in (tasks if isinstance(tasks, list) else [])
+             if t.get("name", "").startswith(CONVERTED_PREFIX)
+             and strip_converted(t["name"]).lower() == base_name.lower()]
+    if not stubs:
+        return False, None
+
+    workspace = asana_get(f"/projects/{EOL_PROJECT_GID}?opt_fields=workspace.gid",
+                          token).get("workspace", {}).get("gid")
+    if not workspace:
+        return True, None
+    query = urllib.parse.quote(base_name)
+    projects = asana_get(
+        f"/workspaces/{workspace}/typeahead?resource_type=project&count=20"
+        f"&query={query}&opt_fields=name,created_at,permalink_url", token)
+
+    for stub in stubs:
+        done = _ts(stub.get("completed_at"))
+        for p in projects if isinstance(projects, list) else []:
+            if p.get("gid") == EOL_PROJECT_GID:
+                continue
+            if p.get("name", "").strip().lower() != base_name.lower():
+                continue
+            created = _ts(p.get("created_at"))
+            if done and created and abs((done - created).total_seconds()) > 600:
+                continue
+            return True, {"gid": p["gid"], "name": p["name"],
+                          "url": p.get("permalink_url")
+                          or f"https://app.asana.com/0/{p['gid']}"}
+    return True, None
 
 
 # ── Field extraction ──────────────────────────────────────────────────────────
@@ -258,6 +319,25 @@ def build_output(task, gid):
     return out
 
 
+def emit(task, gid, token):
+    out = build_output(task, gid)
+    try:
+        converted, project = find_converted_project(
+            strip_converted(task.get("name", "")), token)
+    except Exception as e:  # never block the workflow on this lookup
+        print(f"Warning: converted-project lookup failed: {e}", file=sys.stderr)
+        converted, project = False, None
+    out["_asana_converted_to_project"] = converted
+    if converted and not project:
+        print("Request was converted to a project, but the project could not be "
+              "identified by name — ask the PM for its link.", file=sys.stderr)
+    if project:
+        print(f"Request was converted to project: {project['url']}", file=sys.stderr)
+        out["asana_project_url"] = project["url"]
+        out["_asana_project_name"] = project["name"]
+    print(json.dumps(out, indent=2, ensure_ascii=False))
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -277,7 +357,7 @@ def main():
         if not task:
             print(f"Task {gid} not found or not accessible.", file=sys.stderr)
             sys.exit(2)
-        print(json.dumps(build_output(task, gid), indent=2, ensure_ascii=False))
+        emit(task, gid, token)
         return
 
     # ── Route: product name → search project ─────────────────────────────────
@@ -298,7 +378,7 @@ def main():
         full_task = fetch_task(gid, token)
         if not full_task:
             sys.exit(2)
-        print(json.dumps(build_output(full_task, gid), indent=2, ensure_ascii=False))
+        emit(full_task, gid, token)
         return
 
     # Multiple close matches — let the AI pick

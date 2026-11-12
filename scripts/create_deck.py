@@ -29,46 +29,30 @@ Input JSON fields:
 import json
 import sys
 import os
-import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import google_api, ApiError  # noqa: E402
 
 TEMPLATE_ID   = "1jSiJII27Hr3guxSgDt_D-dFHNCRL3GaCm2J53gu0ZU0"
 COPY_URL      = f"https://docs.google.com/presentation/d/{TEMPLATE_ID}/copy"
 SLIDES_API    = "https://slides.googleapis.com/v1/presentations"
 DRIVE_API     = "https://www.googleapis.com/drive/v3/files"
-QUOTA_PROJECT = os.environ.get("GOOGLE_QUOTA_PROJECT", "")
 EOL_FOLDER_ID = "1xu1sh1ttQIrX3ztb-pQh9ZCfkxTLwrJt"  # EOL deck shared Drive folder
 
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
+# ── HTTP helpers ──────────────────────────────────────────────────────────────
+# Auth is handled by vault_http: GOOGLE_ACCESS_TOKEN if set, otherwise the
+# sealed pm-claude-code-setup vault (token never enters this process).
 
 def get_token():
-    token = os.environ.get("GOOGLE_ACCESS_TOKEN", "").strip()
-    if not token:
-        print(
-            "Error: GOOGLE_ACCESS_TOKEN environment variable is not set. "
-            "Can't connect to Google APIs.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return token
+    return None  # kept for call-site compatibility; vault_http resolves auth
 
 
-# ── HTTP helpers ──────────────────────────────────────────────────────────────
-
-def api(url, token, method="GET", body=None):
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type":  "application/json",
-    }
-    if QUOTA_PROJECT:
-        headers["X-Goog-User-Project"] = QUOTA_PROJECT
-    data = json.dumps(body).encode() if body else None
-    req  = urllib.request.Request(url, data=data, headers=headers, method=method)
+def api(url, token=None, method="GET", body=None):
     try:
-        with urllib.request.urlopen(req) as resp:
-            return json.load(resp)
-    except urllib.error.HTTPError as e:
-        print(f"HTTP {e.code}: {e.read().decode()}", file=sys.stderr)
+        return google_api(url, method, body)
+    except ApiError as e:
+        print(f"HTTP {e.status}: {e.body}", file=sys.stderr)
         raise
 
 

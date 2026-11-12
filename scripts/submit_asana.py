@@ -18,8 +18,9 @@ Output: prints the new Asana task URL to stdout.
 import json
 import sys
 import os
-import urllib.request
-import urllib.parse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import ApiError, asana_api  # noqa: E402
 
 ASANA_API       = "https://app.asana.com/api/1.0"
 EOL_PROJECT_GID = "1214130454046893"
@@ -42,38 +43,18 @@ SKU_YES     = "1215960352578632"   # "Yes"
 SKU_NO      = "1215960352578633"   # "No"
 
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
-
-def get_token():
-    token = os.environ.get("ASANA_ACCESS_TOKEN", "").strip()
-    if not token:
-        print(
-            "Error: ASANA_ACCESS_TOKEN environment variable is not set. "
-            "Can't connect to Asana.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return token
-
-
 # ── API ───────────────────────────────────────────────────────────────────────
 
+def get_token():
+    return None  # kept for call-site compatibility; vault_http resolves auth
+                 # (ASANA_ACCESS_TOKEN env var, else the sealed Keychain vault)
+
+
 def asana_post(path, token, body):
-    data = json.dumps({"data": body}).encode()
-    req  = urllib.request.Request(
-        f"{ASANA_API}{path}",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type":  "application/json",
-        },
-        method="POST"
-    )
     try:
-        with urllib.request.urlopen(req) as resp:
-            return json.load(resp).get("data", {})
-    except urllib.error.HTTPError as e:
-        print(f"Asana API error {e.code}: {e.read().decode()}", file=sys.stderr)
+        return asana_api(f"{ASANA_API}{path}", "POST", {"data": body}).get("data", {})
+    except ApiError as e:
+        print(f"Asana API error {e.status}: {e.body}", file=sys.stderr)
         raise
 
 
