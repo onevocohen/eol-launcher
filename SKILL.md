@@ -80,7 +80,9 @@ python3 "$SKILL_DIR/scripts/track_usage.py" update-readme
 
 **`_asana_*` hints for smarter follow-ups:**
 - `_asana_alternative_flag`: `"full"` → ask for product name; `"partial"` → ask what's missing; `"none"` → flag gap
-- `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []`
+- `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []` and treat it as a **feature deprecation** (see below)
+
+**Feature deprecation (no SKU):** If `_asana_has_skus` is `"No"` (or the PM confirms no SKU is affected), the EOL is for a feature, not a sold product. In that case **do not ask any pricing questions** (question 11, pricing changes / migration discounts / bridge offers). Set `pricing_impact` to `"No pricing impact — feature deprecation with no associated SKU."` automatically.
 - `_asana_full_description`: mine for rationale, customer impact, existing-customer guidance
 - `_asana_due_on`: anchor for key dates
 - `_asana_submitter` / `contact`: pre-fill contact field
@@ -103,7 +105,7 @@ Also accept any PRD, spec, or doc the PM wants to share to reduce questions furt
 | `for_new_customers` | What sales should do for new inquiries |
 | `for_existing_customers` | What to offer existing customers (migration, bridge) |
 | `alternatives` | Replacement product(s) and key value props |
-| `pricing_impact` | Pricing changes, migration offer, discounts |
+| `pricing_impact` | Pricing changes, migration offer, discounts — skip for feature deprecations with no SKU (auto-fill "No pricing impact — feature deprecation with no associated SKU.") |
 | `communication` | Channels and timeline for customer communications |
 | `who_notified` | Which customer segments receive notice |
 | `contact` | Email / Slack for EOL questions |
@@ -310,7 +312,7 @@ Ask questions **one at a time**, in a natural conversation. Wait for each answer
 10. ⚠️ Asana hint — **What is the recommended alternative product or solution?**
     *(Asana tells us if there's a full / partial / no alternative. Ask for the product name and 2–3 key reasons it replaces the EOLed product.)*
 
-11. **Will there be any pricing changes, migration discounts, or bridge offers?**
+11. **Will there be any pricing changes, migration discounts, or bridge offers?** *(Skip entirely for feature deprecations with no SKU — auto-fill `pricing_impact` instead.)*
     *(Even a rough answer helps — e.g., "20% discount for migrating within 6 months".)*
 
 ---
