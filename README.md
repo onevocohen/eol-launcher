@@ -32,17 +32,19 @@ All four are created automatically in one flow — giving you everything you nee
 <!-- USAGE_STATS_START -->
 | Metric | Count |
 |---|---|
-| 🚀 Times skill used | **1** |
-| 👤 Unique PMs | **1** |
-| 📦 Unique products | **1** |
+| 🚀 Times skill used | **3** |
+| 👤 Unique PMs | **3** |
+| 📦 Unique products | **3** |
 
-*Last updated: November 08, 2026 at 08:38 UTC*
+*Last updated: November 12, 2026 at 09:05 UTC*
 
 **Per-PM breakdown:**
 
 | PM | EOL sessions |
 |---|---|
 | Orit | 1 |
+| Hila Gross | 1 |
+| Rinat Bedany Ben David | 1 |
 <!-- USAGE_STATS_END -->
 
 > Stats are tracked locally in `metrics/usage.json` and updated automatically each time the skill is triggered. To refresh them manually, run: `python3 scripts/track_usage.py update-readme`
