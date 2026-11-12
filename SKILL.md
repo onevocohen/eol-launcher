@@ -82,7 +82,7 @@ python3 "$SKILL_DIR/scripts/track_usage.py" update-readme
 - `_asana_alternative_flag`: `"full"` → ask for product name; `"partial"` → ask what's missing; `"none"` → flag gap
 - `_asana_has_skus`: `"Yes"` → ask for specific codes; `"No"` → set `impacted_skus: []` and treat it as a **feature deprecation** (see below)
 
-**Feature deprecation (no SKU):** If `_asana_has_skus` is `"No"` (or the PM confirms no SKU is affected), the EOL is for a feature, not a sold product. In that case **do not ask any pricing questions** (question 11, pricing changes / migration discounts / bridge offers). Set `pricing_impact` to `"No pricing impact — feature deprecation with no associated SKU."` automatically.
+**Feature deprecation (no SKU):** If `_asana_has_skus` is `"No"` (or the PM confirms no SKU is affected), the EOL is for a feature, not a sold product. In that case **do not ask any pricing questions** (question 11, pricing changes / migration discounts / bridge offers). Set `pricing_impact` to `"No pricing impact — feature deprecation with no associated SKU."` automatically. Amir (pricing) is also not relevant, so he is **not** invited to the Slack channel (`create_slack_channel.py` skips him automatically when `impacted_skus` is empty).
 - `_asana_full_description`: mine for rationale, customer impact, existing-customer guidance
 - `_asana_due_on`: anchor for key dates
 - `_asana_submitter` / `contact`: pre-fill contact field
@@ -195,7 +195,7 @@ The script prints JSON with `event_link` and `meet_link`.
 python3 "$SKILL_DIR/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
 ```
 
-Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Amir + anyone in `slack_additional_members`, and posts an intro message with the deck and Asana links.
+Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + anyone in `slack_additional_members`, plus Amir only when pricing is relevant (`impacted_skus` is non-empty), and posts an intro message with the deck and Asana links.
 
 ### Step 7 — Share all outputs
 
@@ -211,7 +211,7 @@ Give the PM all four links in one message:
 > 📅 **EOL review meeting**: [calendar event link] · 🎥 [Google Meet link]
 > *(30 min · review attendees invited · deck + Asana links in the invite)*
 >
-> 💬 **Slack channel**: [#channel-name] *(private · PM, Yael & Amir invited)*
+> 💬 **Slack channel**: [#channel-name] *(private · PM & Yael invited, plus Amir when pricing is relevant)*
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey. All other slides are populated.
 

@@ -13,6 +13,10 @@ import json, sys, subprocess, urllib.request, urllib.parse, re
 
 FIXED_MEMBERS = [
     "ygershongob@paloaltonetworks.com",   # Yael
+]
+# Pricing stakeholders — invited only when pricing is relevant, i.e. SKUs are
+# impacted. Feature deprecations with no SKU skip them.
+PRICING_MEMBERS = [
     "aaviad@paloaltonetworks.com",         # Amir
 ]
 SLACK_API = "https://slack.com/api"
@@ -130,8 +134,10 @@ def main():
         sys.exit(1)
 
     # ── 2. Resolve user IDs ────────────────────────────────────────────────────
+    pricing_relevant = bool(d.get("impacted_skus"))
     all_emails = list(dict.fromkeys(
-        FIXED_MEMBERS + pm_emails + (extra or [])
+        FIXED_MEMBERS + (PRICING_MEMBERS if pricing_relevant else [])
+        + pm_emails + (extra or [])
     ))
     user_ids = []
     for email in all_emails:
