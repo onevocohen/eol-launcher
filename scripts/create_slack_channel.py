@@ -6,6 +6,9 @@ Creates a private Slack channel for the EOL and invites relevant members.
 Usage:
   python3 create_slack_channel.py <eol_input.json> <asana_url> <deck_url>
 
+If the input JSON has asana_project_url (set by fetch_asana.py when the EOL
+request was converted to an Asana project), the intro message links it too.
+
 Outputs JSON with channel_id, channel_name, channel_url.
 """
 
@@ -143,9 +146,15 @@ def main():
             print(f"WARNING: Invite issue: {invite.get('error')}", file=sys.stderr)
 
     # ── 4. Post intro message ──────────────────────────────────────────────────
+    project_url = (d.get("asana_project_url") or "").strip()
+    project_line = (
+        f"🗂️ Asana project: {project_url} _(the EOL request was converted to this "
+        f"project — track EOL execution tasks there)_\n" if project_url else ""
+    )
     intro = (
         f":wave: *EOL Kickoff: {product}*\n\n"
         f"📋 Asana task: {asana_url}\n"
+        f"{project_line}"
         f"📊 Deck: {deck_url}\n\n"
         f"_This channel is the home for all coordination around this EOL._"
     )

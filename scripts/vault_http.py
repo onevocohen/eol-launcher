@@ -81,6 +81,19 @@ def google_api(url, method="GET", body=None):
     return _sealed(["bash", GWS_ADC], url, method, body, extra)
 
 
+# ── Asana ─────────────────────────────────────────────────────────────────────
+
+def asana_api(url, method="GET", body=None):
+    token = os.environ.get("ASANA_ACCESS_TOKEN", "").strip()
+    if token:
+        return _direct(url, token, method, body, {})
+    if not _vault_has("ASANA_ACCESS_TOKEN"):
+        raise SystemExit(
+            "Error: ASANA_ACCESS_TOKEN is not set in the environment or the "
+            "pm-claude-code-setup vault. Can't connect to Asana.")
+    return _sealed(["bash", CRED_VAULT, "--key", "ASANA_ACCESS_TOKEN"], url, method, body, {})
+
+
 # ── Slack ─────────────────────────────────────────────────────────────────────
 
 _slack_source = None  # ("env", token) or ("vault", key)
