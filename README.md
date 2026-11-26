@@ -23,7 +23,7 @@ Your starting point for kicking off an End-of-Life process — from a single con
 | 📋 | EOL request logged | [Asana — EOL Request form](https://app.asana.com/1/11915891072957/project/1214130454046893) |
 | 📊 | Kickoff deck: known info, proposed assumptions, open questions, stakeholders, next steps | Google Slides (copy of the Idira EOL template) |
 | 📅 | 30-minute EOL review meeting | Google Calendar + Google Meet |
-| 💬 | Private Slack channel created | Slack — PM, Yael & Orit invited (+ Amir for product EOLs and commercial features) |
+| 💬 | Private Slack channel, verified | Slack — the same participants as the invite |
 
 All four are created automatically in one flow — giving you everything you need to kick off the EOL process. You don't open Asana, you don't touch the Slides template, you don't create a calendar invite, you don't set up a channel.
 
@@ -80,7 +80,8 @@ AI searches Asana automatically and merges anything already submitted
           Create Google Slides kickoff deck
                  ↓
           Create 30-min Google Meet invite
-          → Invites you, Yael and Orit (+ Amir for product / commercial EOLs)
+          → Invites the participants for your EOL type (see "Who's invited")
+          → Finds a Mon–Thu slot that's free for everyone, in everyone's time zone
           → Deck + Asana links and agenda included
                  ↓
           Create private Slack channel
@@ -96,7 +97,7 @@ No approval round: the deck is created as soon as the basics are known, and you 
 | | Product EOL | Feature EOL |
 |---|---|---|
 | SKU & pricing | Included. Open questions until confirmed | Auto-filled "None" / "No pricing impact" (*proposed*). Switched back on if the feature is sold or priced separately (add-on, license, SKU) |
-| Amir Aviad (pricing & SKUs) | Invited | Only with commercial impact |
+| SKU & Pricing owner | Required | Only with commercial impact |
 | Customer impact | Customers, open opps, ARR | Tenants using the feature |
 | Default communication | External Communication Request (email + in-app, Legal approval) | What's New + docs |
 | Roles suggested for kickoff | R&D, RevOps, Sales / Deal Desk, CS, Support, Marketing, Legal, Tech Writers | R&D, Support, Tech Writers (+ CS if strategic accounts) |
@@ -130,23 +131,44 @@ Say "TBD", "don't know yet" or "let's discuss at kickoff". In the deck, every it
 
 ---
 
-## The Slack channel
+## Who's invited, and why
 
-- **Name:** `#eol-<normalized-product-name>` *(lowercase, hyphens)*
-- **Type:** Private
-- **Attendees:** You (the PM) + Yael Gershon + Orit Nevo Cohen + anyone extra you name. Amir Aviad (pricing & SKUs) is added for product EOLs and for feature EOLs with commercial impact. Plain feature deprecations skip him.
-- **First message:** intro post with links to the deck and Asana task — plus the Asana **project**, if the EOL request was converted to one
+Stakeholders are defined by **role** in [stakeholders.json](stakeholders.json), the one place to
+update when someone changes jobs. Each role says why it's needed and when it applies. The deck,
+the calendar invite and the Slack channel all use the same resolved list.
+
+| Role | Why | When | Today |
+|---|---|---|---|
+| EOL owner (PM) | Owns the decision and plan; escalation point | Always | You |
+| EOL process review | Checks the plan against EOL governance | Always | per `stakeholders.json` |
+| Product Operations | Runs the EOL process and tracking | Always | per `stakeholders.json` |
+| SKU & Pricing owner | Retires SKUs, approves migration offers | Product EOLs, and features with commercial impact | per `stakeholders.json` |
+| R&D, RevOps, Sales, CS, Support, Marketing, Legal, Tech Writers | Listed on the deck as roles to involve, with the reason for each | By EOL type | Named per EOL |
+
+If you name someone ("Yanai owns this", "add Dana from R&D"), they're added to the invite,
+the Slack channel and the deck as a required participant, in the role you gave them.
 
 ---
 
 ## The calendar invite
 
-- **Title:** EOL - [product name]
-- **Duration:** 30 minutes
-- **Format:** Google Meet
-- **Attendees:** You (the PM) + Yael Gershon + Orit Nevo Cohen, plus Amir Aviad for product EOLs and commercial features
-- **Description:** includes a direct link to the deck and the Asana task, and a short agenda (resolve the open questions)
-- **Timing:** next available Israel working-day slot (Sun–Thu, 9am–5pm)
+- **Title:** EOL - [product name] · 30 minutes · Google Meet
+- **Attendees:** the participants above (optional ones marked optional). Checked after booking.
+- **Timing:** the first slot that is **Mon–Thu, inside 09:00–17:00 local time for every
+  participant, and free on everyone's calendar**. Existing meetings are never overridden.
+  With people in several time zones (e.g. Israel + US) you're asked once whether the proposed
+  time works or which hours you prefer. If nothing fits, you get alternatives and nothing is booked.
+
+---
+
+## The Slack channel
+
+- **Name:** `#eol-<normalized-product-name>` *(adds `-2` if that name is already taken)*
+- **Type:** Private (checked with Slack after creation; a public channel is never used)
+- **Members:** same participants as the invite, checked against Slack's member list
+- **First message:** links to the deck, Asana task (and project), open questions and participants
+- If it can't be created (no token, missing permission, workspace policy), you're told exactly
+  why and what's needed. It's never reported as done.
 
 ---
 
@@ -228,6 +250,7 @@ eol-launcher/
 ├── README.md                  ← you are here
 ├── SKILL.md                   ← AI instructions (technical)
 ├── CHANGELOG.md               ← what changed in each version
+├── stakeholders.json          ← role → owner map, why each role is needed, scheduling defaults
 └── scripts/
     ├── fetch_asana.py         ← searches Asana by product name, returns form data
     ├── submit_asana.py        ← creates a new Asana task from PM answers
@@ -237,6 +260,7 @@ eol-launcher/
     ├── eol_rules.py           ← product/feature logic, smart defaults, open questions, stakeholders
     ├── whoami.py              ← identifies the PM from their Asana connection
     ├── track_usage.py         ← logs usage events + updates README stats (this repo only)
+    ├── scheduling.py          ← finds a slot: Mon–Thu, time zones, real availability
     ├── vault_http.py          ← shared credential + HTTP helper (vault first, legacy setup fallback)
     ├── obs.py                 ← silent usage telemetry (no PM content sent)
     └── self_update.py         ← automatic updates from PM Hub

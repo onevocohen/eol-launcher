@@ -2,7 +2,7 @@
 name: EOL Kickoff Toolkit
 description: EOL Kickoff Toolkit for Cursor and Claude Code. Kicks off the full EOL process for a product or feature — searches Asana for an existing request, asks a few quick questions (free text, "TBD" is fine), creates an Asana task (if new), generates a fully populated Google Slides EOL deck, and schedules a 30-minute Google Meet kickoff meeting with the relevant stakeholders. Use when a PM wants to deprecate a product, start an EOL process, or create an EOL deck. Trigger phrases: "EOL", "end of life", "deprecate", "EOL deck", "EOS", "product retirement", "start an EOL", "kick off EOL".
 disable-model-invocation: true
-version: 1.3.0
+version: 1.4.0
 update_source: github.cyberng.com/Product/pm-hub/skills/eol-launcher@master
 observability:
   enabled: true
@@ -30,6 +30,13 @@ most decisions aren't made yet, so:
 - Never invent an answer or present an assumption as a decision.
 - Once the minimum is known (name + product/feature), build everything without asking
   for approval. The PM refines the deck afterwards.
+- **Execute reliably, validate automatically.** Every script reports `ok`, `partial` or
+  `failed` in JSON. Report exactly that: never say a step is done unless its script
+  confirmed it. If one step fails, carry on with the others, then explain what failed,
+  why, and how to fix it.
+- **Stakeholders are roles, not people.** Roles, why each is needed, when it applies and the
+  current owner all live in [stakeholders.json](stakeholders.json). Never hardcode or
+  guess a person. When a role changes hands, edit only that file.
 
 ## Pre-step — Update check (always run first)
 
@@ -163,7 +170,7 @@ python3 "$SKILL_DIR/scripts/whoami.py"
 
 Exit `0` prints `{"pm_name": ..., "contact": ...}` from the PM's own Asana connection. Use both
 as-is. Only if it exits `2` add *"your name and email"* to the intake message below.
-Never default to Orit's name or leave `pm_name` blank.
+Never default to another person's name or leave `pm_name` blank.
 
 **Read the PM's opening message first.** Extract everything it already contains (name, type,
 timeline, reason, replacement, anything else). **If it names the product/feature, run Step 1
@@ -184,13 +191,20 @@ words, the signals in *Question handling*, or Asana's SKU flag.
 > 3. **Why, and what replaces it?** *(a few words is enough, or TBD)*
 >
 > Feel free to paste anything else instead (PRD, Slack thread, notes) and I'll pull out the details.
-> Also tell me if anyone besides you, Yael and Orit should join the Slack channel.
+> If you already know who owns parts of this (e.g. the R&D lead), name them and I'll invite them.
 > I'll then build the Asana request, the kickoff deck, the meeting invite and a Slack channel (a few minutes)."
 
 If you didn't search Asana yet (no name in the opening message), run Step 1 once the PM replies.
 Keep the PM's product name exactly as they wrote it; don't add words like "Legacy".
 
 Answers can be in any order or format. Extract the fields yourself (see *Question handling* below).
+
+**People the PM names are stakeholders, not just Slack members.** Whenever the PM (or a pasted
+doc) names a person for this EOL, such as "Yanai owns this" or "loop in Dana from R&D", add them
+to `stakeholders` in the JSON, with the matching role id from `stakeholders.json` when the role
+is clear (`rd_lead`, `sku_pricing`, `customer_success`, …). They are then required for the deck,
+the invite and Slack. Look up their email with Slack `users.lookupByEmail` / the directory, or ask
+in the same follow-up message if it can't be found. Never drop a named person.
 
 ### Step 1 — Search Asana (as soon as the name is known)
 
@@ -223,10 +237,11 @@ Ask a follow-up only for items that **block** creating the package, all in a sin
 - The product/feature **name** is missing.
 - The **type** (product vs. feature) can't be inferred from the PM's words or Asana.
 - `whoami.py` failed and you still have no PM name/email.
+- A person the PM named has no findable email.
 - Asana returned multiple matches (exit `3`), or a converted project has no link.
 
 Nothing else is blocking. If the PM still doesn't answer the type, **omit `eol_type`**: the
-script uses product (the stricter path: SKUs, pricing and Amir stay in scope), adds *"Product or
+script uses product (the stricter path: SKUs, pricing and the SKU & Pricing owner stay in scope), adds *"Product or
 feature EOL?"* as an open question, and the readout says *"type TBD, treated as product"*. Then go straight to Step 2. **Don't** show a summary or ask
 for approval first; at most say *"Got it, building your kickoff package now."*
 
@@ -251,11 +266,12 @@ extract what the PM said and set `eol_type`, `commercial_impact` and `field_stat
 | `open_opportunities` | **Deferred** — kickoff item (pull from Salesforce for products, usage data for features), unless the PM volunteered numbers |
 | `for_new_customers` | **Branch** — product with a known alternative → *proposed* "lead with the alternative"; feature without commercial impact → *proposed* "no sales action"; otherwise deferred |
 | `for_existing_customers` | **Deferred** — kickoff item, unless the PM volunteered it |
-| `pricing_impact` | **Branch** — product / commercial feature → deferred (Amir); plain feature → *proposed* "No pricing impact" |
-| `impacted_skus` | **Branch** — product / commercial feature → deferred unless the PM gave codes (Amir / RevOps); plain feature → *proposed* "None" |
+| `pricing_impact` | **Branch** — product / commercial feature → deferred (SKU & Pricing owner); plain feature → *proposed* "No pricing impact" |
+| `impacted_skus` | **Branch** — product / commercial feature → deferred unless the PM gave codes (SKU & Pricing owner / RevOps); plain feature → *proposed* "None" |
 | `communication`, `who_notified` | **Smart default** (*proposed*) per type, following the Product Communication Guidelines: products → External Communication Request (customer email + in-app, Legal approval); features → What's New + docs, a dedicated announcement only if impact is significant |
 | `status_notes` | **Inferred** — "Kickoff: EOL plan in preparation" (script default) unless Asana or the PM says more |
-| `slack_additional_members` | **Optional**, mentioned in the intake message, never a separate question. `[]` if none |
+| Stakeholders | **Derived** from `stakeholders.json` by type and commercial impact. Never ask the PM which roles are needed. People the PM names go in `stakeholders` (see Step 0) |
+| `meeting_preference` | **Conditional** — asked only in Step 5, when participants span several time zones |
 | `asana_project_url` | **Inferred** — from `fetch_asana.py`; never ask |
 
 ### Step 2 — Build the input JSON
@@ -286,7 +302,7 @@ cat > /tmp/eol_input.json << 'ENDJSON'
   "alternatives": "...",
   "field_status": {"alternatives": "proposed"},
   "open_questions": ["..."],
-  "slack_additional_members": [],
+  "stakeholders": [{"name": "...", "email": "...", "role": "rd_lead"}],
   "asana_project_url": "..."
 }
 ENDJSON
@@ -295,7 +311,9 @@ ENDJSON
 Any other deck field (`for_new_customers`, `for_existing_customers`, `pricing_impact`,
 `communication`, `who_notified`, `open_opportunities`, `impacted_skus`, `status_notes`,
 `escalation`, `date`) can be added when the PM or Asana provided it.
-Include `commercial_impact` only for features. Include `asana_project_url` only when
+Include `commercial_impact` only for features. `stakeholders`: people named for this EOL;
+`role` is optional (a role id from `stakeholders.json`). Older inputs with
+`slack_additional_members` (emails) still work and are treated the same way. Include `asana_project_url` only when
 `fetch_asana.py` returned it; otherwise omit the key.
 
 ### Step 3 — Save to Asana (only if no existing task was found in Step 1)
@@ -334,26 +352,90 @@ two slides before Q&A: **Open Questions & Decisions** (with the proposed assumpt
 python3 "$SKILL_DIR/scripts/create_deck.py" /tmp/eol_input.json <PRESENTATION_ID>
 ```
 
-### Step 5 — Create the calendar invite
+### Step 5 — Schedule the kickoff meeting
+
+**5a. Plan (read-only, nothing is booked):**
 
 ```bash
-python3 "$SKILL_DIR/scripts/create_calendar.py" /tmp/eol_input.json "<deck_url>" "<asana_url>"
+python3 "$SKILL_DIR/scripts/create_calendar.py" --plan /tmp/eol_input.json
 ```
 
-The script creates a **30-minute Google Meet event** titled `"EOL - <product name>"`, invites the PM + Yael Gershon (`ygershongob@paloaltonetworks.com`) + Orit Nevo Cohen (`onevocohen@paloaltonetworks.com`), plus Amir Aviad (`aaviad@paloaltonetworks.com`, pricing & SKUs) for product EOLs and for feature EOLs with commercial impact. It embeds the deck + Asana links and a short agenda (walk through the deck, resolve the open questions) in the description.
+It resolves the participants (the same list as the deck's Stakeholders slide), reads each
+person's calendar and time zone, and proposes the first 30-minute slot that is:
+**Mon–Thu in every required participant's local week, inside everyone's 09:00–17:00 local
+working hours, and free for every required participant.** Optional participants don't block a
+slot; their conflicts are reported. Settings are under `scheduling` in `stakeholders.json`.
 
-- If the `calendar.readonly` scope is available: the script auto-finds the first free 30-min slot (Israel working hours, Sun–Thu 9am–5pm).
-- If not (403 on FreeBusy): defaults to the next working-day at 09:00 Israel time. The PM can reschedule from the invite if needed.
+- `multiple_time_zones: false` → go to 5b with no question.
+- `multiple_time_zones: true` → ask the PM **one** question, offering the proposed slot in each
+  local time: *"Participants are in Israel and New York. Earliest slot that fits everyone's
+  working hours: Tue 16:00 IST / 09:00 EST. Book it, or do you prefer other hours?"* Put their
+  answer in `meeting_preference` (`{"time_zone": "...", "start": "HH:MM", "end": "HH:MM"}`),
+  or book the proposed slot if they accept.
+- `proposed_slot: null` → **don't book**. Show the `reason` and up to 3 `alternatives` (each
+  lists who is busy), and ask the PM to pick one or give other hours. A picked alternative is
+  booked with the start time as the 4th argument. Explain that it overlaps the listed people.
+- `availability_gaps` (calendar not readable) → those people's availability is unknown. Say so
+  in Step 7; don't present them as free.
 
-The script prints JSON with `event_link` and `meet_link`.
+**5b. Book:**
 
-### Step 6 — Create the Slack channel
+```bash
+python3 "$SKILL_DIR/scripts/create_calendar.py" /tmp/eol_input.json "<deck_url>" "<asana_url>" ["<start ISO>"]
+```
+
+Creates the Meet event `"EOL - <product name>"` with all participants (optional ones marked
+optional), the deck + Asana links, the agenda and the participant list. Then it reads the event
+back and checks that every required participant is on it.
+
+| Exit | `status` | Meaning |
+|---|---|---|
+| `0` | `ok` | Booked and verified |
+| `5` | `partial` | Booked, but `issues` lists a gap (missing attendee, no Meet link, role with no owner) |
+| `6` | `no_slot` | Not booked: no fitting slot; `alternatives` included |
+| `7` | `conflict` | Not booked: the given start conflicts or is outside working hours / Mon–Thu |
+| `1` | `failed` | API error; `fix` says what to do |
+
+The script never books over a required participant's existing meeting on its own. It does so
+only at a start time the PM picked, and you tell the PM who is busy then.
+
+### Step 6 — Create the private Slack channel
 
 ```bash
 python3 "$SKILL_DIR/scripts/create_slack_channel.py" /tmp/eol_input.json "<asana_url>" "<deck_url>"
 ```
 
-Creates a **private** Slack channel named `#eol-<normalized-product-name>`, invites the PM + Yael + Orit Nevo Cohen + anyone in `slack_additional_members`, plus Amir for product EOLs and for features with commercial impact (same rule as the invite), and posts an intro message with the deck and Asana links and the number of open questions. When `asana_project_url` is set, the intro also links the Asana project the request was converted to.
+Creates a **private** channel `#eol-<normalized-name>` and confirms with Slack that it exists
+and is private. A public channel is never used. If the name is taken by a channel the token
+can't see, it uses `-2`, `-3`, …; if it's the PM's own channel, it reuses it. It invites the
+same participants as the invite, checks the member list from Slack's side, and posts the intro
+(links, open-question count, participants).
+
+| Exit | `status` | Meaning |
+|---|---|---|
+| `0` | `ok` | Private channel verified, everyone added, intro posted |
+| `5` | `partial` | Channel works; `not_added` lists who couldn't be added and why |
+| `1` | `failed` | No usable private channel; `error` = why, `fix` = what to do (e.g. missing `groups:write` scope, workspace restricts private channels, no Slack token) |
+
+`token: "bot"` means the channel was created by the Slack app, not the PM's account (no
+`SLACK_USER_TOKEN` is stored). Mention it in Step 7 and invite the PM. Don't silently present
+it as the PM's own channel.
+
+### Step 6b — Validate before reporting (automatic, no PM questions)
+
+Before Step 7, check every result yourself:
+
+| Check | Pass when |
+|---|---|
+| Deck | `create_deck.py` printed a deck URL |
+| Asana | `submit_asana.py` printed a task URL, or an existing task was used |
+| Invite | Step 5 status `ok`, and its `attendees` include every `participants` email from `eol_rules.py summary` that isn't optional |
+| Slack | Step 6 status `ok`, `private_verified: true`, and `added` covers the same participants |
+| Consistency | Deck Stakeholders slide = invite attendees = Slack members (all three come from `eol_rules.stakeholders`) |
+| Scheduling | The booked time is Mon–Thu and inside working hours for every time zone in `local_times` |
+
+A failed check is reported with what, why, and how to fix it. Don't retry endlessly, and don't
+stop the other steps.
 
 ### Step 7 — Share all outputs
 
@@ -373,10 +455,12 @@ python3 "$SKILL_DIR/scripts/eol_rules.py" summary /tmp/eol_input.json
 >
 > 📊 **EOL deck**: [link]
 >
-> 📅 **EOL kickoff meeting**: [calendar event link] · 🎥 [Google Meet link]
-> *(30 min · review attendees invited · deck + Asana links in the invite)*
+> 📅 **EOL kickoff meeting**: [event link] · 🎥 [Meet link]: <day, time in each participant's zone>
+> *(30 min · all <n> required participants invited and verified)*
 >
-> 💬 **Slack channel**: [#channel-name] *(private · you, Yael & Orit, plus Amir for product / commercial EOLs)*
+> 💬 **Slack channel**: [#channel-name](channel_url) *(private, verified · <n> members)*
+>
+> **Who's invited and why:** <one line per participant: name, role, why>
 >
 > **What's in the deck**
 > - ✅ Known: <`known`>
@@ -385,6 +469,12 @@ python3 "$SKILL_DIR/scripts/eol_rules.py" summary /tmp/eol_input.json
 >
 > Slide 2 (EOL Roadmap) is a template graphic — mark where the product currently sits on the journey.
 > Want to fill in any of the open items now? Just tell me and I'll update the deck.
+
+**Only mark a line ✅ if its script returned `ok`.** For `partial` or `failed`, replace the line with
+⚠️ / ❌, what happened, why, and what's needed, for example:
+> ❌ **Slack channel not created**: the Slack app lacks permission to create private channels
+> (`missing_scope`). Fix: add the `groups:write` scope to the app and reinstall it, or create
+> `#eol-<name>` manually and invite: <emails>. The deck, invite and Asana task are ready.
 
 Don't ask the open questions one by one here. Only update the deck if the PM volunteers answers
 (re-run Step 4 with the same presentation ID, then re-share the link).
@@ -423,7 +513,11 @@ features without commercial impact.
 - `ASANA_ACCESS_TOKEN` — Asana personal access token, from the environment variable if set, otherwise the sealed pm-claude-code-setup Keychain vault, otherwise `~/.config/secrets/get-secret.sh` (via `scripts/vault_http.py`)
 - Google + Slack credentials: `create_deck.py`, `create_calendar.py` and `create_slack_channel.py` call APIs through `scripts/vault_http.py`, which uses `GOOGLE_ACCESS_TOKEN` / `SLACK_USER_TOKEN` / `SLACK_BOT_TOKEN` env vars if set, otherwise the sealed pm-claude-code-setup Keychain vault (the token never enters the script), otherwise the legacy Cursor setup (`~/.config/secrets/get-secret.sh` for Slack, the gcloud ADC file at `~/.config/gcloud/application_default_credentials.json` for Google). Slack prefers the user token and falls back to the bot token.
 - `GOOGLE_QUOTA_PROJECT` *(optional)* — GCP project to bill API quota against; defaults to `pntops` when using the vault
-- `EOL_REVIEW_ATTENDEES` *(optional)* — comma-separated reviewer emails that replace the default calendar attendees (Yael, Orit, and Amir for product / commercial EOLs)
+- `stakeholders.json` — the role map (owners, why, when each role applies, scheduling defaults). `EOL_STAKEHOLDER_FILE` can point to another copy for testing
+- `EOL_REVIEW_ATTENDEES` *(optional)* — comma-separated emails **added** to the invite as required participants
+- Python 3.9+ for time zones (`zoneinfo`); older Python uses fixed offsets
+- Google: the approved `calendar.events` scope. Availability comes from reading each participant's calendar (`events.list`); `freeBusy` needs a broader scope that must not be requested. A calendar that isn't shared is reported as "availability unknown"
+- Slack: `groups:write`, `groups:read`, `chat:write`, `users:read`, `users:read.email` (user token preferred, bot token as fallback)
 - The PM (or agent) must have at least Viewer access to the EOL template so the Drive copy API succeeds
 
 ---
@@ -433,7 +527,7 @@ features without commercial impact.
 | | Product EOL | Feature EOL (no commercial impact) | Feature EOL with commercial impact |
 |---|---|---|---|
 | SKU & pricing items | In scope; TBD until confirmed | Auto-filled "None" / "No pricing impact" (proposed) | In scope; TBD until confirmed |
-| Amir Aviad (pricing & SKUs) | Invited | Not invited | Invited |
+| SKU & Pricing owner (see `stakeholders.json`) | Required | Not invited | Required |
 | Customer impact | Customers, open opps, ARR (Salesforce) | Tenants using the feature (usage data) | Customers, open opps, ARR |
 | Default communication | External Communication Request: email + in-app, Legal approval | What's New + docs; dedicated announcement only if impact is significant | External Communication Request |
 | Roles suggested for kickoff | R&D, RevOps, Sales / Deal Desk, CS, Support, Marketing, Legal, Tech Writers | R&D, Support, Tech Writers, CS if strategic accounts | Feature list + RevOps, Sales / Deal Desk |
@@ -460,4 +554,9 @@ call the Claude Code vault script directly.
 | Slides show old placeholder text | Some slides have multiple BODY elements; check `status_notes` keyword match in create_deck.py |
 | `fetch_asana.py` returns empty | Task GID may be wrong — verify the last number in the Asana URL is the task (not the project or section) |
 | `whoami.py` exits `2` | No Asana connection: add "your name and email" to the intake message |
+| A role owner changed | Edit that role's `owner` in `stakeholders.json` (PM Hub PR). No other file names people |
+| Calendar `no_slot` | Every required person is busy or the time zones don't overlap. Offer the `alternatives` or ask for other hours; never book over meetings silently |
+| `availability_gaps` | That person's calendar isn't shared with the PM. Their availability is unknown; tell the PM |
+| Slack `failed` | Read `error` / `fix`. Common causes: no Slack token; missing `groups:write`; the workspace restricts private channels |
+| Slack `name_taken` | Handled automatically: reuses the PM's own channel or adds `-2` |
 | Kickoff slides missing | The template's slide 9 lost its TITLE/BODY placeholders, so `add_kickoff_slides` skipped them. The 9 content slides are still populated |

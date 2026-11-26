@@ -153,10 +153,13 @@ def open_questions_text(d):
 
 def stakeholders_text(d):
     st = d.get("_stakeholders") or {}
-    lines = ["Invited to the kickoff:"]
-    lines += [f"• {p['name']}: {p['role']}" for p in st.get("invited", [])]
-    lines += ["", "Suggested to involve (owners to confirm):"]
-    lines += [f"• {s}" for s in st.get("suggested", [])]
+    lines = ["Invited to the kickoff (same list as the meeting invite):"]
+    for p in st.get("participants", []):
+        opt = "" if p["required"] else " (optional)"
+        lines.append(f"• {p['name']}, {' / '.join(p['roles'])}{opt}: {p['why']}")
+    if st.get("suggested"):
+        lines += ["", "Roles to involve (name the owner at kickoff):"]
+        lines += [f"• {r['role']}: {r['why']}" for r in st["suggested"]]
     lines += ["", "Suggested next steps:"]
     lines += [f"• {s}" for s in d.get("_next_steps") or []]
     return "\n".join(lines)

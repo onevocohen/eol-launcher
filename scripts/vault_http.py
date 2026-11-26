@@ -159,6 +159,16 @@ def _resolve_slack():
                      "in the environment or the vault.")
 
 
+def slack_token_kind():
+    """'user' or 'bot' for the token slack_api() will use, or None if there is none."""
+    try:
+        kind, value = _resolve_slack()
+    except SystemExit:
+        return None
+    key = value if kind == "vault" else ("SLACK_USER_TOKEN" if str(value).startswith("xoxp-") else "SLACK_BOT_TOKEN")
+    return "user" if key == "SLACK_USER_TOKEN" else "bot"
+
+
 def slack_api(url, method="GET", body=None):
     kind, value = _resolve_slack()
     if kind == "env":

@@ -22,6 +22,8 @@ Input JSON keys this module reads, on top of the deck fields:
     open_questions     [str]  extra items the PM wants discussed at kickoff
 """
 
+import json
+import os
 from datetime import date
 
 # Deck fields this module manages, in deck order.
@@ -48,13 +50,11 @@ _UNKNOWN_MARKERS = (
 # Only unknown when they are the whole answer ("Pending Legal review, Q2" is real).
 _UNKNOWN_EXACT = ("pending", "unknown", "?", "??", "n/a", "na", "-")
 
-# Fixed review stakeholders (invited automatically).
-YAEL = {"name": "Yael Gershon", "email": "ygershongob@paloaltonetworks.com",
-        "role": "EOL review"}
-ORIT = {"name": "Orit Nevo Cohen", "email": "onevocohen@paloaltonetworks.com",
-        "role": "Product Operations"}
-AMIR = {"name": "Amir Aviad", "email": "aaviad@paloaltonetworks.com",
-        "role": "Pricing & SKUs"}
+# Stakeholders are defined by ROLE in ../stakeholders.json (one place to edit
+# when a role changes hands). See load_stakeholder_map() / stakeholders().
+STAKEHOLDER_FILE = os.environ.get(
+    "EOL_STAKEHOLDER_FILE",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "stakeholders.json"))
 
 
 # ── Basic checks ──────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ def no_alternative(value):
 
 
 def is_commercial(d):
-    """SKU, pricing and Amir apply: every product EOL, and a feature EOL only
+    """SKU, pricing and the SKU & Pricing owner apply: every product EOL, and a feature EOL only
     when there's a sign of commercial impact (flag set, or real SKU codes)."""
     if eol_type(d) == "product":
         return True
@@ -142,11 +142,11 @@ def _open_question(field, d):
             if commercial else
             "What should current users of the feature do instead (migration steps or workaround)?"),
         "alternatives": "Is there a replacement (full, partial or none)? If so, which one?",
-        "pricing_impact": "Any pricing changes, migration discounts or bridge offers? (Amir)",
+        "pricing_impact": "Any pricing changes, migration discounts or bridge offers? (SKU & Pricing owner)",
         "communication": "How and when do we notify customers, and how much notice do they get?",
         "who_notified": "Which customer segments must be notified?",
         "contact": "Who is the field contact for EOL questions?",
-        "impacted_skus": "Which SKU codes are retired? (confirm with Amir / RevOps)",
+        "impacted_skus": "Which SKU codes are retired? (confirm with the SKU & Pricing owner / RevOps)",
     }
     return q[field]
 
@@ -219,7 +219,7 @@ def apply(d, today=None):
         _status          {field: known|proposed|open}
         _open_questions  [str]   kickoff questions and pending decisions
         _assumptions     [str]   proposed items to confirm
-        _stakeholders    {"invited": [...], "suggested": [...]}
+        _stakeholders    {"participants": [...], "suggested": [...], "unresolved": [...]}
         _next_steps      [str]
     Calling it twice is safe."""
     out = dict(d)
@@ -302,60 +302,122 @@ def render(field, d):
 
 # ── Stakeholders ──────────────────────────────────────────────────────────────
 
-def stakeholders(d):
-    """Who is invited automatically, and which roles to bring in (by role,
-    not by name, since owners differ per product line)."""
-    pm_name = (d.get("pm_name") or "").strip()
-    pm_email = (d.get("contact") or "").strip().lower()
-    people = []
-    if pm_name or pm_email:
-        people.append({"name": pm_name or pm_email, "email": pm_email, "role": "PM, EOL owner"})
-    people += [YAEL, ORIT] + ([AMIR] if is_commercial(d) else [])
-    people += [{"name": e, "email": e.strip().lower(), "role": "Added by PM"}
-               for e in d.get("slack_additional_members") or []]
-    # One line per person: the PM may also be a fixed reviewer (e.g. Orit).
-    invited, seen = [], {}
-    for p in people:
-        key = p.get("email") or p["name"]
-        if key in seen:
-            first = seen[key]
-            if p["role"] not in first["role"]:
-                first["role"] += f", {p['role']}"
-            continue
-        seen[key] = dict(p)
-        invited.append(seen[key])
+_MAP_CACHE = {}
 
-    commercial = is_commercial(d)
-    if eol_type(d) == "product":
-        suggested = [
-            "R&D lead: technical sunset plan and support window",
-            "RevOps / Order Management: SKU retirement and price list",
-            "Sales leadership / Deal Desk: pipeline and renewal handling",
-            "Customer Success: affected accounts and migration",
-            "Support: support policy until EOL",
-            "Marketing / Customer Communications: announcement",
-            "Legal: contractual notice obligations",
-            "Technical Writers: documentation and EOL notice",
-        ]
-    else:
-        suggested = [
-            "R&D lead: removal release and technical impact",
-            "Support: expected questions and workaround",
-            "Technical Writers: documentation and What's New",
-            "Customer Success: only if strategic accounts use the feature",
-        ]
-        if commercial:
-            suggested.insert(1, "RevOps / Order Management: SKU or add-on retirement")
-            suggested.insert(2, "Sales / Deal Desk: affected deals and renewals")
-    return {"invited": invited, "suggested": suggested}
+
+def load_stakeholder_map(path=None):
+    path = path or STAKEHOLDER_FILE
+    if path not in _MAP_CACHE:
+        with open(path) as f:
+            _MAP_CACHE[path] = json.load(f)
+    return _MAP_CACHE[path]
+
+
+def _role_applies(role, d):
+    when = role.get("when", "always")
+    return (when == "always"
+            or (when == "commercial" and is_commercial(d))
+            or (when == "product" and eol_type(d) == "product")
+            or (when == "feature" and eol_type(d) == "feature"))
+
+
+def _norm_email(e):
+    return str(e or "").strip().lower()
+
+
+def _person(entry, default_role="Added by PM"):
+    """Accept "a@b.com", {"email":..}, {"name":..,"email":..,"role":..}."""
+    if isinstance(entry, str):
+        return {"name": entry.strip(), "email": _norm_email(entry), "role_id": None,
+                "role": default_role}
+    return {"name": (entry.get("name") or entry.get("email") or "").strip(),
+            "email": _norm_email(entry.get("email")),
+            "role_id": entry.get("role"), "role": entry.get("role_title") or default_role,
+            "why": entry.get("why", "")}
+
+
+def stakeholders(d, stakeholder_map=None):
+    """Resolve roles to people for this EOL.
+
+    Returns {"participants": [...], "suggested": [...], "unresolved": [...]}:
+      participants  people invited to the kickoff (deck list = calendar = Slack).
+                    Each: name, email, roles [titles], why, required (bool), source.
+      suggested     roles to involve with no named person yet (deck only).
+      unresolved    required roles that have no email (reported, never silently dropped).
+
+    PM-named people come from d["stakeholders"] (list of {name, email, role?})
+    plus the older d["slack_additional_members"] (emails). A PM-named person with
+    a role id (e.g. "rd_lead") takes that role for this EOL, overriding the
+    default owner, and is required. Others are added as required participants
+    ("named by the PM"), because the PM asked for them."""
+    smap = stakeholder_map or load_stakeholder_map()
+    roles = {r["id"]: r for r in smap["roles"]}
+    named = [_person(p) for p in (d.get("stakeholders") or [])]
+    named += [_person(e) for e in (d.get("slack_additional_members") or [])]
+    named_by_role = {p["role_id"]: p for p in named if p["role_id"] in roles}
+
+    people, unresolved, suggested = [], [], []
+    for role in smap["roles"]:
+        if not _role_applies(role, d):
+            continue
+        why = role.get("why_feature") if eol_type(d) == "feature" and role.get("why_feature") else role["why"]
+        override = named_by_role.get(role["id"])
+        owner = role.get("owner")
+        if override:
+            person, source = override, "named by the PM for this EOL"
+        elif owner == "from_input":
+            person = {"name": (d.get("pm_name") or "").strip(), "email": _norm_email(d.get("contact"))}
+            source = "EOL owner from the intake"
+        elif isinstance(owner, dict):
+            person, source = owner, "role owner (stakeholders.json)"
+        else:
+            person, source = None, None
+        required = role.get("attendance") == "required" or bool(override)
+        if person and (person.get("email") or person.get("name")):
+            people.append({"name": person.get("name") or person.get("email"),
+                           "email": _norm_email(person.get("email")), "roles": [role["title"]],
+                           "why": why, "required": required, "source": source})
+            if required and not _norm_email(person.get("email")):
+                unresolved.append(f"{role['title']}: no email for {person.get('name')}")
+        elif required:
+            unresolved.append(f"{role['title']}: no owner configured")
+        else:
+            suggested.append({"role": role["title"], "why": why})
+
+    for p in named:
+        if p["role_id"] in roles:
+            continue
+        people.append({"name": p["name"] or p["email"], "email": p["email"],
+                       "roles": [p["role"] if p["role"] != "Added by PM" else "Named by the PM"],
+                       "why": p.get("why") or "Named by the PM for this EOL.",
+                       "required": True, "source": "named by the PM"})
+
+    # One entry per person (the PM may also hold a fixed role, e.g. Product Ops).
+    merged, by_key = [], {}
+    for p in people:
+        key = p["email"] or p["name"].lower()
+        if key in by_key:
+            m = by_key[key]
+            m["roles"] += [r for r in p["roles"] if r not in m["roles"]]
+            m["required"] = m["required"] or p["required"]
+            if p["why"] not in m["why"]:
+                m["why"] += " " + p["why"]
+            continue
+        by_key[key] = dict(p, roles=list(p["roles"]))
+        merged.append(by_key[key])
+    return {"participants": merged, "suggested": suggested, "unresolved": unresolved}
+
+
+def participant_emails(d, required_only=False):
+    """The single invite list used by the calendar and Slack."""
+    st = d.get("_stakeholders") or stakeholders(d)
+    return [p["email"] for p in st["participants"]
+            if p["email"] and (p["required"] or not required_only)]
 
 
 def invite_emails(d):
-    """Fixed reviewer emails for the calendar invite and Slack channel."""
-    emails = [YAEL["email"], ORIT["email"]]
-    if is_commercial(d):
-        emails.append(AMIR["email"])
-    return emails
+    """Backward-compatible alias: every participant with an email."""
+    return participant_emails(d)
 
 
 # ── Next steps ────────────────────────────────────────────────────────────────
@@ -370,7 +432,7 @@ def next_steps(d):
         steps.append("Confirm the EOL timeline")
     if is_commercial(d):
         if status.get("impacted_skus") != KNOWN:
-            steps.append("Confirm the impacted SKU list with Amir and RevOps")
+            steps.append("Confirm the impacted SKU list with the SKU & Pricing owner and RevOps")
         steps.append("Pull affected customers, open opportunities and ARR")
         if status.get("pricing_impact") != KNOWN or status.get("for_existing_customers") != KNOWN:
             steps.append("Define the migration / bridge offer for existing customers")
@@ -394,7 +456,9 @@ def summary(d):
         "known": [label(f) for f in FIELDS if st[f] == KNOWN],
         "proposed": d["_assumptions"],
         "open_questions": d["_open_questions"],
-        "invited": [p["name"] for p in d["_stakeholders"]["invited"]],
+        "participants": [f'{p["name"]} ({", ".join(p["roles"])})' + ("" if p["required"] else " [optional]")
+                         for p in d["_stakeholders"]["participants"]],
+        "unresolved_roles": d["_stakeholders"]["unresolved"],
     }
 
 

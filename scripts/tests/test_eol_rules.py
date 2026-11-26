@@ -8,7 +8,12 @@ import eol_rules  # noqa: E402
 import create_deck  # noqa: E402
 import submit_asana  # noqa: E402
 
-AMIR = eol_rules.AMIR["email"]
+def _owner(role_id):
+    return next(r for r in eol_rules.load_stakeholder_map()["roles"] if r["id"] == role_id)["owner"]
+
+
+AMIR = _owner("sku_pricing")["email"]          # whoever owns SKU & Pricing today
+PRODUCT_OPS = _owner("product_ops")["email"]
 TODAY = date(2026, 11, 26)
 
 # Minimal intake: name + type only (PM knows almost nothing yet).
@@ -52,7 +57,7 @@ class ProductVsFeature(unittest.TestCase):
         self.assertEqual(d["_status"]["impacted_skus"], "open")
         self.assertEqual(d["_status"]["pricing_impact"], "open")
         self.assertTrue(any("SKU" in q for q in d["_open_questions"]))
-        self.assertTrue(any("RevOps" in s for s in d["_stakeholders"]["suggested"]))
+        self.assertTrue(any("RevOps" in r["role"] for r in d["_stakeholders"]["suggested"]))
 
     def test_plain_feature_skips_sku_pricing_and_amir(self):
         d = eol_rules.apply(FEATURE_MIN, TODAY)
@@ -62,7 +67,7 @@ class ProductVsFeature(unittest.TestCase):
         self.assertEqual(d["_status"]["impacted_skus"], "proposed")
         joined = " ".join(d["_open_questions"] + d["_next_steps"])
         self.assertNotIn("SKU", joined)
-        self.assertNotIn("Amir", joined)
+        self.assertNotIn("SKU & Pricing owner", joined)
         self.assertNotIn("pricing", joined.lower())
 
     def test_feature_with_commercial_impact_brings_amir_back(self):
@@ -124,9 +129,9 @@ class IncompleteInformation(unittest.TestCase):
 class Stakeholders(unittest.TestCase):
     def test_pm_who_is_also_a_reviewer_listed_once(self):
         d = eol_rules.apply(dict(PRODUCT_MIN, pm_name="Orit Nevo Cohen",
-                                 contact=eol_rules.ORIT["email"]), TODAY)
-        names = [p["name"] for p in d["_stakeholders"]["invited"]]
-        self.assertEqual(names.count("Orit Nevo Cohen"), 1)
+                                 contact=PRODUCT_OPS), TODAY)
+        emails = [p["email"] for p in d["_stakeholders"]["participants"]]
+        self.assertEqual(emails.count(PRODUCT_OPS), 1)
 
     def test_known_alternative_gives_proposed_existing_customer_path(self):
         d = eol_rules.apply(dict(FEATURE_MIN, alternatives="Reports API"), TODAY)
@@ -144,13 +149,14 @@ class DeckRequests(unittest.TestCase):
         self.assertEqual(sum(1 for r in reqs if "duplicateObject" in r), 2)
         self.assertIn("Open Questions & Decisions", text)
         self.assertIn("Stakeholders & Next Steps", text)
-        self.assertIn("Amir Aviad", text)
+        self.assertIn(_owner("sku_pricing")["name"], text)
+        self.assertIn("SKU & Pricing owner", text)
         self.assertIn(eol_rules.TBD_TEXT, text)
         self.assertIn("Open Opportunities:", text)
 
     def test_minimal_feature_deck_has_no_amir_or_sku_question(self):
         _, text = self._texts(FEATURE_MIN)
-        self.assertNotIn("Amir Aviad", text)
+        self.assertNotIn(_owner("sku_pricing")["name"], text)
         self.assertNotIn("Which SKU codes", text)
         self.assertIn("Affected Tenants / Usage:", text)
 

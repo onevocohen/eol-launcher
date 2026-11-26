@@ -1,0 +1,111 @@
+{
+  "_readme": "Central EOL stakeholder map. Process logic refers to ROLES only; people live in 'owner'. When a role changes hands, edit only that role's owner (name + email) here, through a PM Hub pull request. 'when': always | commercial (product EOLs and features with commercial impact) | product | feature. 'attendance': required (invited, must be free) | suggested (listed in the deck as a role to involve; invited only when the PM names the person for this EOL). 'owner': a fixed person, 'from_input' (the EOL owner from the PM's answers), or null (named per EOL).",
+  "version": 1,
+  "scheduling": {
+    "meeting_minutes": 30,
+    "meeting_days": ["Mon", "Tue", "Wed", "Thu"],
+    "working_hours": ["09:00", "17:00"],
+    "default_time_zone": "Asia/Jerusalem",
+    "search_working_days": 10,
+    "earliest_start": "next_working_day"
+  },
+  "roles": [
+    {
+      "id": "eol_owner",
+      "title": "EOL owner (PM)",
+      "why": "Owns the EOL decision and plan, answers for the product, and is the escalation point for affected customers and deals.",
+      "when": "always",
+      "attendance": "required",
+      "owner": "from_input"
+    },
+    {
+      "id": "eol_review",
+      "title": "EOL process review",
+      "why": "Reviews the plan against the EOL governance requirements before execution starts.",
+      "when": "always",
+      "attendance": "required",
+      "owner": {"name": "Yael Gershon", "email": "ygershongob@paloaltonetworks.com"}
+    },
+    {
+      "id": "product_ops",
+      "title": "Product Operations",
+      "why": "Runs the EOL process: Asana tracking, communication requests and readiness checks.",
+      "when": "always",
+      "attendance": "required",
+      "owner": {"name": "Orit Nevo Cohen", "email": "onevocohen@paloaltonetworks.com"}
+    },
+    {
+      "id": "sku_pricing",
+      "title": "SKU & Pricing owner",
+      "why": "Retires the SKUs and price-list entries and approves any migration discount or bridge offer.",
+      "when": "commercial",
+      "attendance": "required",
+      "owner": {"name": "Amir Aviad", "email": "aaviad@paloaltonetworks.com"}
+    },
+    {
+      "id": "rd_lead",
+      "title": "R&D lead",
+      "why": "Owns the technical sunset: removal release, support window and technical impact.",
+      "when": "always",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "revops",
+      "title": "RevOps / Order Management",
+      "why": "Removes the SKUs from ordering systems and handles renewals of retired SKUs.",
+      "when": "commercial",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "sales",
+      "title": "Sales leadership / Deal Desk",
+      "why": "Handles open pipeline and renewals, and briefs the field on what to tell customers.",
+      "when": "commercial",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "customer_success",
+      "title": "Customer Success",
+      "why": "Identifies affected accounts and runs customer migration.",
+      "why_feature": "Needed only if strategic accounts actively use the feature.",
+      "when": "always",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "support",
+      "title": "Support",
+      "why": "Sets the support policy until EOL and prepares for customer questions.",
+      "when": "always",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "marketing_comms",
+      "title": "Marketing / Customer Communications",
+      "why": "Owns the customer announcement through the External Communication Request process.",
+      "when": "commercial",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "legal",
+      "title": "Legal",
+      "why": "Confirms contractual notice obligations and approves customer-facing wording.",
+      "when": "product",
+      "attendance": "suggested",
+      "owner": null
+    },
+    {
+      "id": "tech_writers",
+      "title": "Technical Writers",
+      "why": "Updates the documentation and publishes the EOL notice or What's New entry.",
+      "when": "always",
+      "attendance": "suggested",
+      "owner": null
+    }
+  ]
+}
