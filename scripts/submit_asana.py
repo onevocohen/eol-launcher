@@ -8,7 +8,8 @@ task was found. Creates the task as the system-of-record entry.
 Usage:
     python3 submit_asana.py /tmp/eol_input.json
 
-Input JSON: same schema as create_deck.py (the 16 deck fields).
+Input JSON: same schema as create_deck.py. Missing / TBD fields are allowed:
+only known answers are written as facts; the rest go under open questions.
 Additional optional field:
     pm_name   (str) — name of the PM submitting the request
 
@@ -18,8 +19,10 @@ Output: prints the new Asana task URL to stdout.
 import json
 import sys
 import os
-import urllib.request
-import urllib.parse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vault_http import ApiError, asana_api  # noqa: E402
+import eol_rules  # noqa: E402
 
 ASANA_API       = "https://app.asana.com/api/1.0"
 EOL_PROJECT_GID = "1214130454046893"
@@ -42,38 +45,18 @@ SKU_YES     = "1215960352578632"   # "Yes"
 SKU_NO      = "1215960352578633"   # "No"
 
 
-# ── Auth ─────────────────────────────────────────────────────────────────────
-
-def get_token():
-    token = os.environ.get("ASANA_ACCESS_TOKEN", "").strip()
-    if not token:
-        print(
-            "Error: ASANA_ACCESS_TOKEN environment variable is not set. "
-            "Can't connect to Asana.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return token
-
-
 # ── API ───────────────────────────────────────────────────────────────────────
 
+def get_token():
+    return None  # kept for call-site compatibility; vault_http resolves auth
+                 # (ASANA_ACCESS_TOKEN env var, else the sealed Keychain vault)
+
+
 def asana_post(path, token, body):
-    data = json.dumps({"data": body}).encode()
-    req  = urllib.request.Request(
-        f"{ASANA_API}{path}",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type":  "application/json",
-        },
-        method="POST"
-    )
     try:
-        with urllib.request.urlopen(req) as resp:
-            return json.load(resp).get("data", {})
-    except urllib.error.HTTPError as e:
-        print(f"Asana API error {e.code}: {e.read().decode()}", file=sys.stderr)
+        return asana_api(f"{ASANA_API}{path}", "POST", {"data": body}).get("data", {})
+    except ApiError as e:
+        print(f"Asana API error {e.status}: {e.body}", file=sys.stderr)
         raise
 
 
@@ -86,7 +69,11 @@ def bullets(items):
 
 
 def build_notes(d, pm_name, pm_email):
-    """Build the Q&A-style notes that mirror the Asana form format."""
+    """Build the Q&A-style notes that mirror the Asana form format.
+    Only known answers go in the main sections; proposed defaults and open
+    questions are listed separately so the record never shows guesses as facts."""
+    status = d.get("_status") or {}
+    known = lambda f: status.get(f, "known") == "known" and not eol_rules.is_unknown(d.get(f))  # noqa: E731
     lines = []
     lines.append("Who are you?:")
     lines.append(pm_name or d.get("contact", ""))
@@ -97,65 +84,56 @@ def build_notes(d, pm_name, pm_email):
     lines.append("End of life / Deprecation name:")
     lines.append(d.get("product_name", ""))
     lines.append("")
+    lines.append("EOL type:")
+    kind = eol_rules.eol_type(d).capitalize()
+    if eol_rules.eol_type(d) == "feature":
+        kind += " (commercial impact)" if eol_rules.is_commercial(d) else " (no SKU / pricing impact)"
+    lines.append(kind)
+    lines.append("")
     lines.append("Please provide a description of the EOL:")
     lines.append(d.get("announcement", ""))
 
-    # Append additional context as extra sections
-    if d.get("key_dates"):
-        lines.append("")
-        lines.append("Key Dates:")
-        lines.append(bullets(d.get("key_dates", [])))
-
-    if d.get("rationale"):
-        lines.append("")
-        lines.append("Business Rationale:")
-        lines.append(bullets(d.get("rationale", [])))
-
-    if d.get("for_new_customers") or d.get("for_existing_customers"):
-        lines.append("")
-        lines.append("Sales Guidance:")
-        if d.get("for_new_customers"):
+    sections = [("key_dates", "Key Dates"), ("rationale", "Business Rationale"),
+                ("alternatives", "Alternative"), ("communication", "Communication Plan")]
+    for field, title in sections:
+        if known(field):
+            lines += ["", f"{title}:", eol_rules.bullets(d[field])]
+    if known("for_new_customers") or known("for_existing_customers"):
+        lines += ["", "Sales Guidance:"]
+        if known("for_new_customers"):
             lines.append(f"New customers: {d['for_new_customers']}")
-        if d.get("for_existing_customers"):
+        if known("for_existing_customers"):
             lines.append(f"Existing customers: {d['for_existing_customers']}")
 
-    if d.get("alternatives"):
-        lines.append("")
-        lines.append("Alternative:")
-        lines.append(d["alternatives"])
-
-    if d.get("communication"):
-        lines.append("")
-        lines.append("Communication Plan:")
-        lines.append(d["communication"])
+    if d.get("_assumptions"):
+        lines += ["", "Proposed assumptions (to confirm at kickoff):",
+                  eol_rules.bullets(d["_assumptions"])]
+    if d.get("_open_questions"):
+        lines += ["", "Open questions for the EOL kickoff:",
+                  eol_rules.bullets(d["_open_questions"])]
 
     return "\n".join(lines)
 
 
 def map_alternative(d):
-    """Map alternatives field to Asana enum option GID."""
-    alt = (d.get("alternatives") or "").lower()
-    skus = d.get("impacted_skus", [])
-
-    # Infer from content
-    if not alt or "no alternative" in alt or "no replacement" in alt:
+    """Map alternatives to the Asana enum. Unknown -> None (field left empty,
+    so the form never claims a replacement exists before it's decided)."""
+    alt = d.get("alternatives")
+    if eol_rules.is_unknown(alt) or (d.get("_status") or {}).get("alternatives") == "open":
+        return None
+    text = str(alt).lower()
+    if eol_rules.no_alternative(alt):
         return ALT_NONE
-    if "partial" in alt or "phase" in alt:
+    if "partial" in text:
         return ALT_PARTIAL
     return ALT_FULL
 
 
 def map_sku(d):
-    """Map impacted_skus to Yes/No enum GID.
-    Treats TBD / None / N/A / empty strings as 'No'."""
-    skus = d.get("impacted_skus", [])
-    _no_values = {"tbd", "none", "n/a", "no", "unknown", ""}
-    if isinstance(skus, list):
-        meaningful = [s for s in skus if str(s).strip().lower() not in _no_values]
-        return SKU_YES if meaningful else SKU_NO
-    if isinstance(skus, str) and skus.strip().lower() not in _no_values:
-        return SKU_YES
-    return SKU_NO
+    """Map SKU impact to the Yes/No enum.
+    Product EOLs and commercial feature EOLs -> Yes, even when the codes are
+    still TBD (the codes are an open question, not a "No"). Plain feature -> No."""
+    return SKU_YES if eol_rules.is_commercial(d) else SKU_NO
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -166,7 +144,7 @@ def main():
         sys.exit(1)
 
     with open(sys.argv[1]) as f:
-        data = json.load(f)
+        data = eol_rules.apply(json.load(f))
 
     pm_name  = data.get("pm_name", "")
     pm_email = data.get("contact", "")
@@ -178,17 +156,6 @@ def main():
     # Build the task body
     notes      = build_notes(data, pm_name, pm_email)
     eol_desc   = data.get("announcement", "")
-    due_on     = None  # Could be inferred from key_dates if needed
-
-    # Extract last EOL date from key_dates for due_on
-    key_dates = data.get("key_dates", [])
-    if key_dates:
-        import re
-        # Look for a year in the last date entry
-        last = key_dates[-1]
-        m = re.search(r'\b(202[5-9]|203\d)\b', last)
-        # Only use if we can parse a real date — skip for safety
-
     task_body = {
         "name":    product,
         "notes":   notes,
@@ -197,11 +164,14 @@ def main():
             CF_NAME:        product,
             CF_EOL_DESC:    eol_desc,
             CF_SUBMITTER:   pm_name or pm_email,
-            CF_ALTERNATIVE: map_alternative(data),
             CF_STATUS:      STATUS_NEW,
             CF_SKU:         map_sku(data),
         }
     }
+
+    alternative = map_alternative(data)
+    if alternative:
+        task_body["custom_fields"][CF_ALTERNATIVE] = alternative
 
     task = asana_post("/tasks", token, task_body)
     task_gid = task.get("gid", "")

@@ -6,7 +6,7 @@ This repository automates an EOL kickoff workflow. `SKILL.md` describes the work
 
 - Requires Python 3.6+; no dependency installation or build step is configured.
 - Syntax check: `python3 -m py_compile scripts/*.py`
-- No automated test suite is configured.
+- Unit tests: `python3 -m unittest discover -s scripts/tests` (offline; no live calls).
 - Run the workflow by following `SKILL.md`. It invokes live external services; do not run it as a test.
 
 ## Conventions
@@ -18,6 +18,6 @@ This repository automates an EOL kickoff workflow. `SKILL.md` describes the work
 ## Never
 
 - Never hard-code, log, or commit credentials; use the documented environment variables.
-- Never invent missing EOL details. Ask the PM for missing information, one question at a time.
+- Never invent missing EOL details. Ask only the few blocking intake questions in `SKILL.md`; anything else unknown becomes an open question in the deck (see `scripts/eol_rules.py`).
 - Never create an Asana task when an existing matching task is being used.
 - Never trigger live Asana, Google, or Slack actions as a test or without user authorization.
